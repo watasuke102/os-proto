@@ -4,5 +4,3 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-uefi = "0.14.0"
-uefi-services = "0.11.0"

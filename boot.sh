@@ -17,7 +17,7 @@ sudo cp ${BUILD_DIR}/loader.efi ${EFI_DIR}/BOOTX64.EFI
 sudo cp ${BUILD_DIR}/kernel.elf ${MOUNT_DIR}
 sudo umount ${MOUNT_DIR}
 
-qemu-system-x86_64 \
+qemu-system-x86_64 -s \
   -drive if=pflash,format=raw,readonly=on,file=OVMF_CODE.fd \
   -drive if=pflash,format=raw,file=OVMF_VARS.fd \
   -drive format=raw,file=${DISK_IMG} \

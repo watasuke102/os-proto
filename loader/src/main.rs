@@ -2,27 +2,37 @@
 #![no_main]
 #![feature(abi_efiapi)]
 
-use core::{fmt::Write, mem};
-use uefi::prelude::*;
-use uefi::proto::console::gop::GraphicsOutput;
-use uefi::table::boot::MemoryDescriptor;
-use uefi::ResultExt;
+mod uefi;
+use core::arch::asm;
+use core::panic::PanicInfo;
+//use uefi::{EfiHandle, EfiSystemTable};
 
-#[entry]
-fn main(_handle: Handle, mut table: SystemTable<Boot>) -> Status {
-    uefi_services::init(&mut table).unwrap_success();
-    // get memmap
-    let memmup_size = table.boot_services().memory_map_size().map_size;
-    writeln!(table.stdout(), "size: {}", memmup_size);
-    let mut buf = Vec![0; memmup_size];
-    let memmap = table.boot_services().memory_map(&mut buf);
-    // get GOP
-    let gop = unsafe {
-        &mut *(table
-            .boot_services()
-            .locate_protocol::<GraphicsOutput>()
-            .unwrap_success()
-            .get())
-    };
+#[panic_handler]
+fn handle_panic(_info: &PanicInfo) -> ! {
     loop {}
+}
+type EfiHandle = u64;
+struct EfiSystemTable {
+    _b:  [u8; 60],
+    out: *mut OutputProtocol,
+}
+struct OutputProtocol {
+    _b1:           u64,
+    output_string: unsafe extern "efiapi" fn(*mut OutputProtocol, *mut [u16; 6]),
+    _b2:           [u64; 4],
+    clear_screen:  unsafe extern "efiapi" fn(*mut OutputProtocol),
+}
+
+#[no_mangle]
+fn efi_main(_h: EfiHandle, table: *mut EfiSystemTable) {
+    unsafe {
+        //((*(*table).stdout).clear_screen)((*table).stdout);
+        ((*(*table).out).clear_screen)((*table).out);
+        loop {
+            asm!("hlt");
+            asm!("hlt");
+            asm!("hlt");
+        }
+        //(*table).stdout.Print(65);
+    }
 }
