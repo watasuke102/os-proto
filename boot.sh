@@ -14,6 +14,7 @@ mkfs.fat ${DISK_IMG}
 sudo mount -o loop ${DISK_IMG} ${MOUNT_DIR}
 [ ! -e ${EFI_DIR} ] && sudo mkdir -p ${EFI_DIR}
 sudo cp ${BUILD_DIR}/loader.efi ${EFI_DIR}/BOOTX64.EFI
+sudo cp ${BUILD_DIR}/kernel.elf ${MOUNT_DIR}
 sudo umount ${MOUNT_DIR}
 
 qemu-system-x86_64 \

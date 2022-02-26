@@ -1,16 +1,17 @@
 #![no_std]
 #![no_main]
-#![feature(asm)]
+use core::mem::align_of;
+use core::panic::PanicInfo;
 
-struct FrameBufferConfig {
-    frame_buffer: *const u8,
+pub struct FrameBufferConfig {
+    frame_buffer: *mut [u8; 4],
     pixels_per_scan_line: u32,
     horizontal_resolution: u32,
     vertical_resolution: u32,
     pixel_format: i32,
 }
 
-struct MemoryMap {
+pub struct MemoryMap {
     buffer_size: u64,
     buffer: *const u8,
     map_size: u64,
@@ -19,19 +20,28 @@ struct MemoryMap {
     descriptor_version: u32,
 }
 
-fn hlt() {
-    unsafe {
-        asm!("hlt");
-    }
+#[panic_handler]
+fn handle_panic(_info: &PanicInfo) -> ! {
+    loop {}
 }
 
 #[no_mangle]
 pub extern "sysv64" fn kernel_main(
     config: &mut FrameBufferConfig,
-    memmap: &mut MemoryMap,
+    _memmap: &mut MemoryMap,
     _a: *const u8,
-) {
-    loop {
-        hlt();
+) -> ! {
+    for y in 0..config.vertical_resolution {
+        for x in 0..config.horizontal_resolution {
+            unsafe {
+                let p = (config.frame_buffer as u64
+                    + 4 * (x + y * config.horizontal_resolution) as u64)
+                    as *mut [u8; 4];
+                (*p)[0] = 0xff;
+                (*p)[1] = 0xff;
+                (*p)[2] = 0xff;
+            }
+        }
     }
+    loop {}
 }
