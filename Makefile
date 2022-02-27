@@ -1,4 +1,4 @@
-BUILD_DIR := build
+BUILD_DIR  := build
 LOADER_SRC := $(wildcard loader/src/*.rs)
 KERNEL_SRC := $(wildcard kernel/src/*.rs)
 
@@ -12,11 +12,11 @@ umount:
 
 loader: $(BUILD_DIR)/loader.efi
 
-#$(BUILD_DIR)/loader.efi: ~/program/mikanos-book/src/MikanLoaderPkg/Main.c#loader/src/main.rs
-#	cp ~/program/mikanos-book/build/Loader.efi build/loader.efi
-$(BUILD_DIR)/loader.efi: $(LOADER_SRC)
-	cd loader && cargo build
-	cp loader/target/x86_64-unknown-uefi/debug/loader.efi $(BUILD_DIR)
+$(BUILD_DIR)/loader.efi: ~/program/mikanos-book/src/MikanLoaderPkg/Main.c
+	cp ~/program/mikanos-book/build/Loader.efi build/loader.efi
+#$(BUILD_DIR)/loader.efi: $(LOADER_SRC)
+#	cd loader && cargo build
+#	cp loader/target/x86_64-unknown-uefi/debug/loader.efi $(BUILD_DIR)
 
 $(BUILD_DIR)/kernel.elf: $(KERNEL_SRC)
 	cd kernel && cargo build
