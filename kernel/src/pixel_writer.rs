@@ -39,29 +39,42 @@ pub struct FrameBufferConfig {
 }
 
 impl FrameBufferConfig {
-  pub fn write_rect(&self, begin: Vec2, size: Vec2, c: &PixelColor, fill: bool) {
+  pub fn write_rect(&self, begin: Vec2<u32>, size: Vec2<u32>, c: &PixelColor, fill: bool) {
     // top, bottom
-    for x in begin.0..(begin.0 + size.0) {
-      self.write_pixel((x, begin.1), c);
-      self.write_pixel((x, begin.1 + size.1 - 1), c);
+    for x in begin.x..(begin.x + size.x) {
+      self.write_pixel(Vec2::<u32> { x: x, y: begin.y }, c);
+      self.write_pixel(
+        Vec2::<u32> {
+          x: x,
+          y: begin.y + size.y - 1,
+        },
+        c,
+      );
     }
     // left, right
-    for y in (begin.1 + 1)..(begin.1 + size.1 - 1) {
-      self.write_pixel((begin.0, y), c);
-      self.write_pixel((begin.0 + size.0 - 1, y), c);
+    for y in (begin.y + 1)..(begin.y + size.y - 1) {
+      self.write_pixel(Vec2::<u32> { x: begin.x, y: y }, c);
+      self.write_pixel(
+        Vec2::<u32> {
+          x: begin.x + size.x - 1,
+          y: y,
+        },
+        c,
+      );
     }
     // body
     if fill {
-      for y in (begin.1 + 1)..(begin.1 + size.1 - 1) {
-        for x in (begin.0 + 1)..(begin.0 + size.0 - 1) {
-          self.write_pixel((x, y), c);
+      for y in (begin.y + 1)..(begin.y + size.y - 1) {
+        for x in (begin.x + 1)..(begin.x + size.x - 1) {
+          self.write_pixel(Vec2::<u32> { x: x, y: y }, c);
         }
       }
     }
   }
 
-  pub fn write_pixel(&self, pos: Vec2, c: &PixelColor) {
-    let p = (self.frame_buffer as u64 + 4 * (pos.0 + pos.1 * self.horizontal_resolution) as u64)
+  pub fn write_pixel(&self, pos: Vec2<u32>, c: &PixelColor) {
+    let p = (self.frame_buffer as u64 +
+      4 * (pos.x as u32 + pos.y as u32 * self.horizontal_resolution) as u64)
       as *mut [u8; 4];
     unsafe {
       match self.pixel_format {
