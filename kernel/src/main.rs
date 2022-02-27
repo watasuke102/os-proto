@@ -4,14 +4,6 @@ mod pixel_writer;
 use core::panic::PanicInfo;
 use pixel_writer::*;
 
-pub struct FrameBufferConfig {
-    frame_buffer:          *mut PixelColor,
-    pixels_per_scan_line:  u32,
-    horizontal_resolution: u32,
-    vertical_resolution:   u32,
-    pixel_format:          i32,
-}
-
 #[panic_handler]
 fn handle_panic(_info: &PanicInfo) -> ! {
     loop {}
@@ -25,13 +17,13 @@ pub extern "sysv64" fn kernel_main(
 ) -> ! {
     for y in 0..config.vertical_resolution {
         for x in 0..config.horizontal_resolution {
-            unsafe {
-                let p = (config.frame_buffer as u64 +
-                    4 * (x + y * config.horizontal_resolution) as u64)
-                    as *mut PixelColor;
-                (*p) = PixelColor::from_hex(0x32a852);
-            }
+            config.write_pixel((x, y), &PixelColor::from_hex(0x32a852));
         }
     }
+    let c = PixelColor::from_hex(0x742e94);
+    config.write_rect((50, 50), (100, 100), &c, true);
+    config.write_rect((250, 250), (10, 10), &c, false);
+    /*
+     */
     loop {}
 }

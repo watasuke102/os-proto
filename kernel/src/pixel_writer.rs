@@ -1,3 +1,5 @@
+use kernel::Vec2;
+
 pub struct PixelColor {
   r:         u8,
   g:         u8,
@@ -19,6 +21,61 @@ impl PixelColor {
       g:         ((c >> 8) & 0xff) as u8,
       b:         ((c) & 0xff) as u8,
       _reserved: 0,
+    }
+  }
+}
+
+enum PixelFormat {
+  RgbResv8bit,
+  BgrResv8bit,
+}
+
+pub struct FrameBufferConfig {
+  frame_buffer:              *mut [u8; 4],
+  pixels_per_scan_line:      u32,
+  pub horizontal_resolution: u32,
+  pub vertical_resolution:   u32,
+  pixel_format:              PixelFormat,
+}
+
+impl FrameBufferConfig {
+  pub fn write_rect(&self, begin: Vec2, size: Vec2, c: &PixelColor, fill: bool) {
+    // top, bottom
+    for x in begin.0..(begin.0 + size.0) {
+      self.write_pixel((x, begin.1), c);
+      self.write_pixel((x, begin.1 + size.1 - 1), c);
+    }
+    // left, right
+    for y in (begin.1 + 1)..(begin.1 + size.1 - 1) {
+      self.write_pixel((begin.0, y), c);
+      self.write_pixel((begin.0 + size.0 - 1, y), c);
+    }
+    // body
+    if fill {
+      for y in (begin.1 + 1)..(begin.1 + size.1 - 1) {
+        for x in (begin.0 + 1)..(begin.0 + size.0 - 1) {
+          self.write_pixel((x, y), c);
+        }
+      }
+    }
+  }
+
+  pub fn write_pixel(&self, pos: Vec2, c: &PixelColor) {
+    let p = (self.frame_buffer as u64 + 4 * (pos.0 + pos.1 * self.horizontal_resolution) as u64)
+      as *mut [u8; 4];
+    unsafe {
+      match self.pixel_format {
+        PixelFormat::RgbResv8bit => {
+          (*p)[0] = c.r;
+          (*p)[1] = c.g;
+          (*p)[2] = c.b;
+        }
+        PixelFormat::BgrResv8bit => {
+          (*p)[0] = c.b;
+          (*p)[1] = c.g;
+          (*p)[2] = c.r;
+        }
+      }
     }
   }
 }
