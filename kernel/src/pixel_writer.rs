@@ -11,7 +11,7 @@ impl PixelColor {
     PixelColor {
       r:         r,
       g:         g,
-      b:         g,
+      b:         b,
       _reserved: 0,
     }
   }
@@ -31,14 +31,20 @@ enum PixelFormat {
 }
 
 pub struct FrameBufferConfig {
-  frame_buffer:              *mut [u8; 4],
-  pixels_per_scan_line:      u32,
-  pub horizontal_resolution: u32,
-  pub vertical_resolution:   u32,
-  pixel_format:              PixelFormat,
+  frame_buffer:          *mut [u8; 4],
+  pixels_per_scan_line:  u32,
+  horizontal_resolution: u32,
+  vertical_resolution:   u32,
+  pixel_format:          PixelFormat,
 }
 
 impl FrameBufferConfig {
+  pub fn size(&self) -> Vec2<u32> {
+    Vec2::<u32> {
+      x: self.horizontal_resolution,
+      y: self.vertical_resolution,
+    }
+  }
   pub fn write_rect(&self, begin: Vec2<u32>, size: Vec2<u32>, c: &PixelColor, fill: bool) {
     // top, bottom
     for x in begin.x..(begin.x + size.x) {
