@@ -28,15 +28,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "loader"
-version = "0.1.0"
-dependencies = [
- "common",
- "uefi",
- "uefi-services",
-]
-
-[[package]]
 name = "log"
 version = "0.4.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -104,17 +95,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "uefi-services"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7840bddc6477dc443cc5652ca9683de9f10bd173691151c3160d734521bef3bd"
-dependencies = [
- "cfg-if",
- "log",
- "uefi",
 ]
 
 [[package]]

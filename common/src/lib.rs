@@ -3,8 +3,10 @@
 #![allow(unused_imports)]
 #![allow(unused_variables)]
 
-#[derive(Debug, Clone, Copy)]
-pub enum Direction {
-  Vertical,
-  Horizontal,
+pub mod frame_buffer;
+
+#[derive(Debug)]
+pub struct Vec2<T> {
+  pub x: T,
+  pub y: T,
 }

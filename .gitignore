@@ -1,2 +1,3 @@
 /build
 OVMF_*.fd
+target/
