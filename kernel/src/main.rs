@@ -4,13 +4,13 @@
 #![allow(unused_imports)]
 #![allow(unused_variables)]
 
+mod memory;
 mod pixel_writer;
-mod window;
 use core::panic::PanicInfo;
-use heapless::Arc;
 use kernel::{Direction, Vec2};
+use memory::paging::*;
+use memory::segment::*;
 use pixel_writer::*;
-use window::*;
 
 #[panic_handler]
 fn handle_panic(_info: &PanicInfo) -> ! {

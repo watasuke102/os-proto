@@ -13,7 +13,7 @@ pub struct Window {
 
 pub struct FrameContainer {
   valid:         bool,
-  list:          Queue<Frame, 16>,
+  //list:          Queue<Frame, 16>,
   pub direction: Direction,
   pub size:      Vec2<u32>,
 }
