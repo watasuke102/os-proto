@@ -80,8 +80,8 @@ impl FrameBuffer {
 }
 
 pub struct FrameBuffer {
-  frame_buffer: *mut u8,
-  stride:       usize,
-  resolution:   Vec2<u32>,
-  pixel_format: PixelFormat,
+  pub frame_buffer: *mut u8,
+  pub stride:       usize,
+  pub resolution:   Vec2<u32>,
+  pub pixel_format: PixelFormat,
 }

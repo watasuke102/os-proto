@@ -5,10 +5,11 @@ DISK_IMG="${BUILD_DIR}/disk.img"
 MOUNT_DIR="${BUILD_DIR}/mnt"
 EFI_DIR="${MOUNT_DIR}/EFI/BOOT"
 
-[ -e ${DISK_IMG} ] && rm -f ${DISK_IMG}
-
-qemu-img create -f raw ${DISK_IMG} 100M
-mkfs.fat ${DISK_IMG}
+#if [[ -e ${DISK_IMG} ]]; then
+#  rm -f ${DISK_IMG}
+#  qemu-img create -f raw ${DISK_IMG} 100M
+#  mkfs.fat ${DISK_IMG}
+#fi
 
 [ ! -e ${MOUNT_DIR} ] && mkdir -p ${MOUNT_DIR}
 sudo mount -o loop ${DISK_IMG} ${MOUNT_DIR}
