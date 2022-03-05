@@ -7,7 +7,15 @@
 
 use common::{frame_buffer::*, Vec2};
 use core::{arch::asm, fmt::Write, mem};
-use uefi::{prelude::*, proto::console::gop::GraphicsOutput, ResultExt};
+use uefi::{
+    prelude::*,
+    proto::{
+        console::gop::GraphicsOutput,
+        media::file::{File, FileAttribute, FileMode, FileType::*},
+    },
+    table::boot::MemoryType,
+    ResultExt,
+};
 
 #[entry]
 fn main(_handle: Handle, mut table: SystemTable<Boot>) -> Status {
@@ -40,7 +48,7 @@ fn main(_handle: Handle, mut table: SystemTable<Boot>) -> Status {
         pixel_format: gop.current_mode_info().pixel_format(),
     };
 
-    // read ELF
+    // open root dir
     writeln!(table.stdout(), "[Log] Loading root dir").unwrap();
     let mut dir = unsafe {
         &mut *table
@@ -52,19 +60,36 @@ fn main(_handle: Handle, mut table: SystemTable<Boot>) -> Status {
     }
     .open_volume()
     .unwrap_success();
-    let mut b: [u8; 128] = [0; 128];
-    loop {
-        match dir.read_entry(&mut b).unwrap_success() {
-            Some(info) => writeln!(
-                table.stdout(),
-                "[Debug] {} ({:?})",
-                info.file_name(),
-                info.attribute()
-            )
-            .unwrap(),
-            None => break,
-        };
-    }
+    // find kernel file and check file size
+    const BUFFER_SIZE: usize = 128;
+    let mut buffer: [u8; BUFFER_SIZE] = [0; BUFFER_SIZE];
+    let kernel_size = loop {
+        match dir.read_entry(&mut buffer).unwrap_success() {
+            Some(file) => {
+                if file.file_name().as_string() == "kernel.elf" {
+                    break file.file_size();
+                }
+            }
+            None => panic!("`kernel.elf` is not found"),
+        }
+    };
+    writeln!(table.stdout(), "[Debug] Kernel size: {} bytes", kernel_size).unwrap();
+    // load kernel to pool
+    // FileAttribute is invalid in Read-Only open like this
+    let mut kernel_file = match dir
+        .open("kernel.elf", FileMode::Read, FileAttribute::READ_ONLY)
+        .unwrap_success()
+        .into_type()
+        .unwrap_success()
+    {
+        Regular(f) => f,
+        _ => panic!("Invalid file type"),
+    };
+
+    let loader_pool = table
+        .boot_services()
+        .allocate_pool(MemoryType::LOADER_DATA, kernel_size as usize)
+        .unwrap_success();
 
     loop {
         unsafe {
