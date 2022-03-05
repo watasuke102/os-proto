@@ -14,11 +14,8 @@ umount:
 loader: $(BUILD_DIR)/loader.efi
 kernel: $(BUILD_DIR)/kernel.elf
 
-#$(BUILD_DIR)/loader.efi: ~/program/mikanos-book/src/MikanLoaderPkg/Main.c
-#	cp ~/program/mikanos-book/build/Loader.efi build/loader.efi
-$(BUILD_DIR)/loader.efi: $(LOADER_SRC)
-	cd loader && cargo build
-	cp loader/target/x86_64-unknown-uefi/debug/loader.efi $(BUILD_DIR)
+$(BUILD_DIR)/loader.efi: ~/program/mikanos-book/src/MikanLoaderPkg/Main.c
+	cp ~/program/mikanos-book/build/Loader.efi build/loader.efi
 
 $(BUILD_DIR)/kernel.elf: $(KERNEL_SRC)
 	cd kernel && cargo build
