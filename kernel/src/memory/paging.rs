@@ -1,27 +1,38 @@
+use core::arch::asm;
 use core::mem::transmute;
-use x86_64::{registers::control::Cr3, structures::paging::*};
+use kernel::print;
+use lazy_static::lazy_static;
+use x86_64::{
+  registers::control::{Cr3, Cr3Flags},
+  structures::paging::*,
+  PhysAddr,
+};
 
-const PAGE_SIZE: usize = 512;
-const PAGE_DIRECTORY_COUNT: usize = 64;
+const EMPTY_PAGE_TABLE: PageTable = PageTable::new();
+const PAGE_DIR_COUNT: usize = 64;
 
-#[allow(non_upper_case_globals)]
-const PAGE_SIZE_4K: usize = 4096;
-#[allow(non_upper_case_globals)]
-const PAGE_SIZE_2M: usize = 512 * PAGE_SIZE_4K;
-#[allow(non_upper_case_globals)]
-const PAGE_SIZE_1G: usize = 512 * PAGE_SIZE_2M;
+static mut L4_TABLE: PageTable = EMPTY_PAGE_TABLE;
+static mut DIR_POINTER_TABLE: PageTable = EMPTY_PAGE_TABLE;
+static mut PAGE_DIR: [PageTable; PAGE_DIR_COUNT] = [EMPTY_PAGE_TABLE; PAGE_DIR_COUNT];
 
-static mut L4_TABLE: [u64; PAGE_SIZE] = [0; PAGE_SIZE];
-static mut DIRECTORY_POINTER_TABLE: [u64; PAGE_SIZE] = [0; PAGE_SIZE];
-static mut PAGE_DIRECTORY: [[u64; PAGE_SIZE]; PAGE_DIRECTORY_COUNT] =
-  [[0; PAGE_SIZE]; PAGE_DIRECTORY_COUNT];
+fn phys_frame_from_table(table: &PageTable) -> PhysFrame {
+  PhysFrame::from_start_address(PhysAddr::new((table as *const PageTable) as u64)).unwrap()
+}
+pub fn init() {
+  let page_table_flag = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
 
-unsafe fn init() {
-  L4_TABLE[0] = &DIRECTORY_POINTER_TABLE[0] | 0x003;
-  for i in 0..PAGE_DIRECTORY_COUNT {
-    DIRECTORY_POINTER_TABLE[i] = transmute::<&[u64; PAGE_SIZE], u64>(&PAGE_DIRECTORY[0]) | 0x003;
-    for j in 0..PAGE_SIZE {
-      PAGE_DIRECTORY[i][j] = ((i * PAGE_SIZE_1G) + (j * PAGE_SIZE_2M) | 0x083) as u64;
+  unsafe {
+    L4_TABLE[0].set_frame(phys_frame_from_table(&DIR_POINTER_TABLE), page_table_flag);
+    for (i, page_dir) in PAGE_DIR.iter_mut().enumerate() {
+      DIR_POINTER_TABLE[i].set_frame(phys_frame_from_table(&page_dir), page_table_flag);
+      for (j, dir_entry) in PAGE_DIR[i].iter_mut().enumerate() {
+        let addr = (i as u64 * Size1GiB::SIZE) + (j as u64 * Size2MiB::SIZE);
+        dir_entry.set_addr(
+          PhysAddr::new(addr),
+          page_table_flag | PageTableFlags::HUGE_PAGE,
+        );
+      }
     }
+    Cr3::write(phys_frame_from_table(&L4_TABLE), Cr3Flags::empty());
   }
 }

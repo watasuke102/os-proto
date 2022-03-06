@@ -14,18 +14,18 @@ pub struct MemoryMap {
 
 static mut GDT: GlobalDescriptorTable = GlobalDescriptorTable::new();
 
-pub unsafe fn init() {
-  // Init GDT
-  GDT.add_entry(Descriptor::user_code_segment());
-  GDT.add_entry(Descriptor::user_data_segment());
-  GDT.load();
-
-  // Init segment registers
-  DS::set_reg(SegmentSelector(0));
-  ES::set_reg(SegmentSelector(0));
-  FS::set_reg(SegmentSelector(0));
-  GS::set_reg(SegmentSelector(0));
-
-  CS::set_reg(SegmentSelector(1 << 3));
-  SS::set_reg(SegmentSelector(2 << 3));
+pub fn init() {
+  unsafe {
+    // Init GDT
+    let code_selector = GDT.add_entry(Descriptor::kernel_code_segment());
+    let data_selector = GDT.add_entry(Descriptor::kernel_data_segment());
+    GDT.load();
+    // Init segment registers
+    DS::set_reg(SegmentSelector(0));
+    ES::set_reg(SegmentSelector(0));
+    FS::set_reg(SegmentSelector(0));
+    GS::set_reg(SegmentSelector(0));
+    CS::set_reg(code_selector);
+    SS::set_reg(data_selector);
+  }
 }

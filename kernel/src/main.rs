@@ -7,13 +7,14 @@
 mod memory;
 mod pixel_writer;
 use core::panic::PanicInfo;
+use kernel::print;
 use kernel::{Direction, Vec2};
-use memory::paging::*;
-use memory::segment::*;
+use memory::*;
 use pixel_writer::*;
 
 #[panic_handler]
 fn handle_panic(_info: &PanicInfo) -> ! {
+  kernel::serial_println!("[FATAL] {}", _info);
   loop {}
 }
 
@@ -23,11 +24,26 @@ pub extern "sysv64" fn kernel_main(
   _memmap: u64,
   _acpi_table: u64,
 ) -> ! {
-  // config.write_pixel(Vec2::<u32> { x: x, y: y }, &PixelColor::from_hex(0x32a852));
   config.write_rect(
     Vec2::<u32> { x: 0, y: 0 },
     config.size(),
     &PixelColor::from_hex(0x32a852),
+    true,
+  );
+
+  segment::init();
+  config.write_rect(
+    Vec2::<u32> { x: 0, y: 0 },
+    config.size(),
+    &PixelColor::from_hex(0x6134eb),
+    true,
+  );
+
+  paging::init();
+  config.write_rect(
+    Vec2::<u32> { x: 0, y: 0 },
+    config.size(),
+    &PixelColor::from_hex(0xeb4034),
     true,
   );
 
