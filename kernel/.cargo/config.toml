@@ -1,5 +1,5 @@
 [build]
-target = "spec.json"
+target = "x86_64-unknown-os.json"
 
 [unstable]
 build-std = ["core", "compiler_builtins", "alloc"]
