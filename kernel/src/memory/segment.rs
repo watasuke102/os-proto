@@ -3,15 +3,6 @@ use x86_64::{
   structures::gdt::{Descriptor, GlobalDescriptorTable},
 };
 
-pub struct MemoryMap {
-  buffer_size:        u64,
-  buffer:             *const u8,
-  map_size:           u64,
-  map_key:            u64,
-  descriptor_size:    u64,
-  descriptor_version: u32,
-}
-
 static mut GDT: GlobalDescriptorTable = GlobalDescriptorTable::new();
 
 pub fn init() {
