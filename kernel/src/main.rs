@@ -3,18 +3,19 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 #![allow(unused_variables)]
+#![feature(const_mut_refs)]
 
 mod memory;
 mod pixel_writer;
 use core::panic::PanicInfo;
-use kernel::print;
+use kernel::*;
 use kernel::{Direction, Vec2};
 use memory::*;
 use pixel_writer::*;
 
 #[panic_handler]
-fn handle_panic(_info: &PanicInfo) -> ! {
-  kernel::serial_println!("[FATAL] {}", _info);
+fn handle_panic(info: &PanicInfo) -> ! {
+  kernel::serial_println!("[PANIC] {}", info);
   loop {}
 }
 

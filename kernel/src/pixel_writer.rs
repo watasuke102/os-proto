@@ -1,4 +1,4 @@
-use kernel::Vec2;
+use crate::Vec2;
 
 pub struct PixelColor {
   r: u8,

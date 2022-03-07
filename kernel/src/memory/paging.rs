@@ -1,7 +1,3 @@
-use core::arch::asm;
-use core::mem::transmute;
-use kernel::print;
-use lazy_static::lazy_static;
 use x86_64::{
   registers::control::{Cr3, Cr3Flags},
   structures::paging::*,
