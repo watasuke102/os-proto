@@ -4,13 +4,15 @@ KERNEL_SRC := $(wildcard kernel/src/*.rs)
 KERNEL_SRC += $(wildcard kernel/src/memory/*.rs)
 KERNEL_SRC += kernel/src/entry.asm
 
-.PHONY: run mount umount loader kernel
+.PHONY: run mount umount kill loader kernel
 run: $(BUILD_DIR)/kernel.elf $(BUILD_DIR)/loader.efi
 	./boot.sh
 mount:
 	sudo mount -o loop $(BUILD_DIR)/disk.img $(BUILD_DIR)/mnt
 umount:
 	sudo umount $(BUILD_DIR)/mnt
+kill:
+	killall qemu-system-x86_64 -s SIGKILL
 
 loader: $(BUILD_DIR)/loader.efi
 kernel: $(BUILD_DIR)/kernel.elf

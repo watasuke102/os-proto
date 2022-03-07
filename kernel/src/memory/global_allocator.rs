@@ -1,12 +1,44 @@
+use crate::memory::memory_map::MemoryDescriptor;
 use crate::memory::{linked_list_allocator::LinkedListAllocator, memory_map::MemoryMap};
+use crate::print;
 use alloc::alloc::{GlobalAlloc, Layout};
 use core::ptr::null_mut;
+use kernel::serial_println;
 use spin::{Mutex, MutexGuard};
 
 #[global_allocator]
 static ALLOCATOR: Allocator = Allocator::new(LinkedListAllocator::new());
 
 pub fn init(memmap: &MemoryMap) {
+  use core::mem::size_of;
+  serial_println!(
+    "sizeof: {}, 0: {:X}, 1: {:X}",
+    size_of::<MemoryDescriptor>(),
+    memmap.descriptor_list,
+    memmap.descriptor_list + memmap.descriptor_size as usize
+  );
+  serial_println!(
+    "{}/{} = {}",
+    memmap.map_size,
+    memmap.descriptor_size,
+    memmap.map_size / memmap.descriptor_size
+  );
+  for i in 0..(memmap.map_size / memmap.descriptor_size) {
+    let desc =
+      (memmap.descriptor_list + (memmap.descriptor_size * i) as usize) as *const MemoryDescriptor;
+    unsafe {
+      serial_println!(
+        "{:02} {:X}| {}, {}, {}, {}, {}",
+        i,
+        memmap.descriptor_list + (memmap.descriptor_size * i) as usize,
+        (*desc).memory_type,
+        (*desc).physical_start,
+        (*desc).virtual_start,
+        (*desc).number_of_pages,
+        (*desc).attribute,
+      );
+    }
+  }
   todo!();
 }
 
