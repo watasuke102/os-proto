@@ -18,6 +18,8 @@ use kernel::{Direction, Vec2};
 use memory::*;
 use pixel_writer::*;
 
+use crate::memory::memory_map::MemoryType;
+
 #[panic_handler]
 fn handle_panic(info: &PanicInfo) -> ! {
   kernel::serial_println!("[PANIC] {}", info);
@@ -66,11 +68,9 @@ pub extern "sysv64" fn kernel_main(
     true,
   );
 
-  let a = vec![1, 2, 3];
-  for e in a {
-    serial_print!("{}, ", e);
-  }
-  serial_println!("\nAll done!!");
+  let a = vec![1, 2, 3, 4, 5, 6];
+  serial_print!("{:?}, ", a);
+  serial_println!("\r\nAll done!!");
 
   loop {
     unsafe {

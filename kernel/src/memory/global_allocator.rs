@@ -6,40 +6,38 @@ use core::ptr::null_mut;
 use kernel::serial_println;
 use spin::{Mutex, MutexGuard};
 
+use super::memory_map::MemoryType;
+
 #[global_allocator]
 static ALLOCATOR: Allocator = Allocator::new(LinkedListAllocator::new());
 
+const UEFI_PAGE_SIZE: usize = 4096;
+
+#[rustfmt::skip]
+fn is_available_memory(typ: u32) -> bool {
+  typ == MemoryType::BootServicesCode   as u32 ||
+  typ == MemoryType::BootServicesData   as u32 ||
+  typ == MemoryType::ConventionalMemory as u32
+}
+
 pub fn init(memmap: &MemoryMap) {
-  use core::mem::size_of;
-  serial_println!(
-    "sizeof: {}, 0: {:X}, 1: {:X}",
-    size_of::<MemoryDescriptor>(),
-    memmap.descriptor_list,
-    memmap.descriptor_list + memmap.descriptor_size as usize
-  );
-  serial_println!(
-    "{}/{} = {}",
-    memmap.map_size,
-    memmap.descriptor_size,
-    memmap.map_size / memmap.descriptor_size
-  );
+  let mut available_end: usize = 0;
   for i in 0..(memmap.map_size / memmap.descriptor_size) {
-    let desc =
-      (memmap.descriptor_list + (memmap.descriptor_size * i) as usize) as *const MemoryDescriptor;
-    unsafe {
-      serial_println!(
-        "{:02} {:X}| {}, {}, {}, {}, {}",
-        i,
-        memmap.descriptor_list + (memmap.descriptor_size * i) as usize,
-        (*desc).memory_type,
-        (*desc).physical_start,
-        (*desc).virtual_start,
-        (*desc).number_of_pages,
-        (*desc).attribute,
-      );
+    let desc = unsafe {
+      let ptr = memmap.descriptor_list + (memmap.descriptor_size * i) as usize;
+      &*(ptr as *const MemoryDescriptor)
+    };
+    let size = desc.number_of_pages as usize * UEFI_PAGE_SIZE;
+
+    if is_available_memory(desc.memory_type) {
+      if available_end >= desc.physical_start {
+        unsafe {
+          ALLOCATOR.lock().add_free_region(desc.physical_start, size);
+        }
+      }
+      available_end = desc.physical_start + size;
     }
   }
-  todo!();
 }
 
 struct Allocator {

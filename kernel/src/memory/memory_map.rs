@@ -19,7 +19,7 @@ pub struct MemoryDescriptor {
   pub attribute:       u64,
 }
 
-enum MemoryType {
+pub enum MemoryType {
   ReservedMemoryType,
   LoaderCode,
   LoaderData,
