@@ -1,9 +1,8 @@
 use crate::memory::memory_map::MemoryDescriptor;
 use crate::memory::{linked_list_allocator::LinkedListAllocator, memory_map::MemoryMap};
-use crate::print;
+use crate::{print, serial_print, serial_println};
 use alloc::alloc::{GlobalAlloc, Layout};
 use core::ptr::null_mut;
-use kernel::serial_println;
 use spin::{Mutex, MutexGuard};
 
 use super::memory_map::MemoryType;
@@ -21,23 +20,26 @@ fn is_available_memory(typ: u32) -> bool {
 }
 
 pub fn init(memmap: &MemoryMap) {
-  let mut available_end: usize = 0;
   for i in 0..(memmap.map_size / memmap.descriptor_size) {
     let desc = unsafe {
       let ptr = memmap.descriptor_list + (memmap.descriptor_size * i) as usize;
       &*(ptr as *const MemoryDescriptor)
     };
-    let size = desc.number_of_pages as usize * UEFI_PAGE_SIZE;
 
     if is_available_memory(desc.memory_type) {
-      if available_end >= desc.physical_start {
-        unsafe {
-          ALLOCATOR.lock().add_free_region(desc.physical_start, size);
-        }
+      unsafe {
+        ALLOCATOR.lock().add_free_region(
+          desc.physical_start,
+          desc.number_of_pages as usize * UEFI_PAGE_SIZE,
+        );
       }
-      available_end = desc.physical_start + size;
     }
   }
+
+  serial_println!(
+    "Allocator inited: total_size={}",
+    ALLOCATOR.lock().total_size()
+  );
 }
 
 struct Allocator {

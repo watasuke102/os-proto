@@ -69,7 +69,7 @@ pub extern "sysv64" fn kernel_main(
   );
 
   let a = vec![1, 2, 3, 4, 5, 6];
-  serial_print!("{:?}, ", a);
+  serial_print!("vector: {:?}", a);
   serial_println!("\r\nAll done!!");
 
   loop {

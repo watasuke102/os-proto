@@ -78,4 +78,16 @@ impl LinkedListAllocator {
 
     Ok(alloc_begin)
   }
+
+  pub fn total_size(&mut self) -> usize {
+    let mut sum: usize = 0;
+    let mut current = &mut self.head;
+
+    while let Some(ref mut region) = current.next {
+      sum += region.size;
+      current = current.next.as_mut().unwrap();
+    }
+
+    sum
+  }
 }
