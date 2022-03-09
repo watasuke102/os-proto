@@ -17,7 +17,7 @@ pub struct Window {
 impl Frame for Window {
   fn draw(&self, buffer: &FrameBufferConfig, pos: FramePos, size: FrameSize) {
     serial_println!("draw at: {:?} | size: {:?}", pos, size);
-    buffer.write_rect(pos, size, &self.color, true);
+    buffer.write_rect_with_border(pos, size, &self.color, &PixelColor::from_hex(0x2b2b2b), 2);
   }
 }
 

@@ -38,6 +38,26 @@ impl FrameBufferConfig {
       y: self.vertical_resolution,
     }
   }
+  pub fn write_pixel(&self, pos: Vec2<u32>, c: &PixelColor) {
+    let p = (self.frame_buffer as u64 +
+      4 * (pos.x as u32 + pos.y as u32 * self.horizontal_resolution) as u64)
+      as *mut [u8; 4];
+    unsafe {
+      match self.pixel_format {
+        PixelFormat::RgbResv8bit => {
+          (*p)[0] = c.r;
+          (*p)[1] = c.g;
+          (*p)[2] = c.b;
+        }
+        PixelFormat::BgrResv8bit => {
+          (*p)[0] = c.b;
+          (*p)[1] = c.g;
+          (*p)[2] = c.r;
+        }
+      }
+    }
+  }
+
   pub fn write_rect(&self, begin: Vec2<u32>, size: Vec2<u32>, c: &PixelColor, fill: bool) {
     // top, bottom
     for x in begin.x..(begin.x + size.x) {
@@ -71,23 +91,21 @@ impl FrameBufferConfig {
     }
   }
 
-  pub fn write_pixel(&self, pos: Vec2<u32>, c: &PixelColor) {
-    let p = (self.frame_buffer as u64 +
-      4 * (pos.x as u32 + pos.y as u32 * self.horizontal_resolution) as u64)
-      as *mut [u8; 4];
-    unsafe {
-      match self.pixel_format {
-        PixelFormat::RgbResv8bit => {
-          (*p)[0] = c.r;
-          (*p)[1] = c.g;
-          (*p)[2] = c.b;
-        }
-        PixelFormat::BgrResv8bit => {
-          (*p)[0] = c.b;
-          (*p)[1] = c.g;
-          (*p)[2] = c.r;
-        }
-      }
+  pub fn write_rect_with_border(
+    &self,
+    begin: Vec2<u32>,
+    size: Vec2<u32>,
+    body_color: &PixelColor,
+    border_color: &PixelColor,
+    border_size: u32,
+  ) {
+    let mut diff = Vec2::<u32> { x: 0, y: 0 };
+    let two = Vec2::<u32> { x: 2, y: 2 };
+    for i in 0..border_size {
+      self.write_rect(begin + diff, size - diff * two, border_color, false);
+      diff.x += 1;
+      diff.y += 1;
     }
+    self.write_rect(begin + diff, size - diff * two, body_color, true);
   }
 }

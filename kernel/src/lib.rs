@@ -6,7 +6,7 @@ pub enum Direction {
   Horizontal,
 }
 
-use core::ops::{Add, Mul};
+use core::ops::{Add, Mul, Sub};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Vec2<T> {
   pub x: T,
@@ -18,6 +18,15 @@ impl<T: Add<Output = T>> Add for Vec2<T> {
     Self {
       x: self.x + other.x,
       y: self.y + other.y,
+    }
+  }
+}
+impl<T: Sub<Output = T>> Sub for Vec2<T> {
+  type Output = Self;
+  fn sub(self, other: Self) -> Self {
+    Self {
+      x: self.x - other.x,
+      y: self.y - other.y,
     }
   }
 }
