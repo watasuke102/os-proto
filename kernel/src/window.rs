@@ -1,6 +1,6 @@
 use crate::{FrameBufferConfig, PixelColor};
 use alloc::{rc::Rc, vec, vec::Vec};
-use core::cell::{Cell, RefCell};
+use core::cell::{Cell, Ref, RefCell};
 use kernel::{print, serial_println, Direction, Vec2};
 use x86_64::structures::paging::frame;
 
@@ -22,9 +22,9 @@ impl Frame for Window {
 }
 
 pub struct FrameContainer {
-  list:          Vec<Rc<dyn Frame>>,
+  list:          Vec<Rc<RefCell<dyn Frame>>>,
   direction:     Direction,
-  active_window: Rc<Window>,
+  active_window: usize,
 }
 impl FrameContainer {
   fn window_diff(&self, size: FrameSize) -> FrameSize {
@@ -54,17 +54,17 @@ impl FrameContainer {
     }
   }
 
-  fn add(&mut self, color: PixelColor) {
-    let win = Rc::new(Window { color });
+  fn add_window(&mut self, color: PixelColor) {
+    let win = Rc::new(RefCell::new(Window { color }));
     self.list.push(win.clone());
-    self.active_window = win;
+    self.active_window = self.list.len() - 1;
   }
 }
 impl Frame for FrameContainer {
   fn draw(&self, buffer: &FrameBufferConfig, pos: FramePos, size: FrameSize) {
     let child_size = self.children_size(size);
     for (i, frame) in self.list.iter().enumerate() {
-      frame.draw(
+      frame.borrow().draw(
         buffer,
         pos +
           self.window_diff(size) *
@@ -94,23 +94,40 @@ impl FrameManager {
       ),
     }
   }
-  pub fn add(&mut self, dir: Direction, col: PixelColor) {
+  pub fn add(&mut self, dir: Direction, color: PixelColor) {
     serial_println!("[ADD] dir: {}", dir as u32);
+    let new_active_container: Rc<RefCell<FrameContainer>>;
+
     if let Some(container) = &self.active_container {
-      if container.borrow().direction == dir {
-        serial_println!("added(same_direction)");
-        container.borrow_mut().add(col);
+      let mut container = container.borrow_mut();
+      if container.direction == dir {
+        serial_println!("added (same_direction)");
+        container.add_window(color);
+        return;
+      } else {
+        let active_index = container.active_window;
+        serial_println!("added (different_direction)");
+        new_active_container = Rc::new(RefCell::new(FrameContainer {
+          list:          vec![
+            container.list[active_index].clone(),
+            Rc::new(RefCell::new(Window { color })),
+          ],
+          direction:     dir,
+          active_window: 1,
+        }));
+        container.list[active_index] = new_active_container.clone();
       }
     } else {
       serial_println!("added (container was empty)");
-      let win = Rc::new(Window { color: col });
-      self.active_container = Some(Rc::new(RefCell::new(FrameContainer {
+      let win = Rc::new(RefCell::new(Window { color }));
+      new_active_container = Rc::new(RefCell::new(FrameContainer {
         list:          vec![win.clone()],
         direction:     dir,
-        active_window: win.clone(),
-      })));
-      self.head = self.active_container.clone();
+        active_window: 0,
+      }));
+      self.head = Some(new_active_container.clone());
     }
+    self.active_container = Some(new_active_container.clone());
   }
 
   pub fn draw(&self, frame_buffer: &FrameBufferConfig) {
