@@ -1,21 +1,38 @@
 #![no_std]
-#![allow(dead_code)]
-#![allow(unused_imports)]
-#![allow(unused_variables)]
-use core::fmt::Write;
-use uart_16550::SerialPort;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Direction {
   Vertical,
   Horizontal,
 }
 
-#[derive(Debug, Clone, Copy)]
+use core::ops::{Add, Mul};
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Vec2<T> {
   pub x: T,
   pub y: T,
 }
+impl<T: Add<Output = T>> Add for Vec2<T> {
+  type Output = Self;
+  fn add(self, other: Self) -> Self {
+    Self {
+      x: self.x + other.x,
+      y: self.y + other.y,
+    }
+  }
+}
+impl<T: Mul<Output = T>> Mul for Vec2<T> {
+  type Output = Self;
+  fn mul(self, other: Self) -> Self {
+    Self {
+      x: self.x * other.x,
+      y: self.y * other.y,
+    }
+  }
+}
+
+use core::fmt::Write;
+use uart_16550::SerialPort;
 
 pub fn print(args: core::fmt::Arguments) {
   let mut serial_port = unsafe { SerialPort::new(0x3f8) };

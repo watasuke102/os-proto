@@ -24,11 +24,11 @@ enum PixelFormat {
 }
 
 pub struct FrameBufferConfig {
-  frame_buffer:          *mut [u8; 4],
-  pixels_per_scan_line:  u32,
-  horizontal_resolution: u32,
-  vertical_resolution:   u32,
-  pixel_format:          PixelFormat,
+  pub frame_buffer:          *mut [u8; 4],
+  pub pixels_per_scan_line:  u32,
+  pub horizontal_resolution: u32,
+  pub vertical_resolution:   u32,
+  pixel_format:              PixelFormat,
 }
 
 impl FrameBufferConfig {
