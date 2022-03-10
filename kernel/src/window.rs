@@ -1,7 +1,7 @@
 use crate::{FrameBufferConfig, PixelColor};
 use alloc::{rc::Rc, vec, vec::Vec};
 use core::cell::{Cell, Ref, RefCell};
-use kernel::{print, serial_println, Direction, Vec2};
+use kernel::{print, serial_println, Direction, Rect, Vec2};
 use x86_64::structures::paging::frame;
 
 type FrameSize = Vec2<u32>;
@@ -16,8 +16,15 @@ pub struct Window {
 }
 impl Frame for Window {
   fn draw(&self, buffer: &FrameBufferConfig, pos: FramePos, size: FrameSize) {
+    let rect = Rect { begin: pos, size }.shrink(4);
     serial_println!("draw at: {:?} | size: {:?}", pos, size);
-    buffer.write_rect_with_border(pos, size, &self.color, &PixelColor::from_hex(0x2b2b2b), 2);
+    buffer.write_rect_with_border(
+      rect.begin,
+      rect.size,
+      &self.color,
+      &PixelColor::from_hex(0x2b2b2b),
+      2,
+    );
   }
 }
 
@@ -31,11 +38,11 @@ impl FrameContainer {
     use Direction::*;
     FrameSize {
       x: match self.direction {
-        Vertical => 0,
+        Top | Bottom => 0,
         _ => size.x / self.list.len() as u32,
       },
       y: match self.direction {
-        Horizontal => 0,
+        Left | Right => 0,
         _ => size.y / self.list.len() as u32,
       },
     }
@@ -44,17 +51,17 @@ impl FrameContainer {
     use Direction::*;
     FrameSize {
       x: match self.direction {
-        Vertical => size.x,
+        Top | Bottom => size.x,
         _ => size.x / self.list.len() as u32,
       },
       y: match self.direction {
-        Horizontal => size.y,
+        Left | Right => size.y,
         _ => size.y / self.list.len() as u32,
       },
     }
   }
 
-  fn add_window(&mut self, color: PixelColor) {
+  fn push_window(&mut self, color: PixelColor) {
     let win = Rc::new(RefCell::new(Window { color }));
     self.list.push(win.clone());
     self.active_window = self.list.len() - 1;
@@ -102,7 +109,7 @@ impl FrameManager {
       let mut container = container.borrow_mut();
       if container.direction == dir {
         serial_println!("added (same_direction)");
-        container.add_window(color);
+        container.push_window(color);
         return;
       } else {
         let active_index = container.active_window;

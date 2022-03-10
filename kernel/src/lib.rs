@@ -2,8 +2,12 @@
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Direction {
-  Vertical,
-  Horizontal,
+  // Vertical
+  Top,
+  Bottom,
+  // Horizontal
+  Left,
+  Right,
 }
 
 use core::ops::{Add, Mul, Sub};
@@ -36,6 +40,26 @@ impl<T: Mul<Output = T>> Mul for Vec2<T> {
     Self {
       x: self.x * other.x,
       y: self.y * other.y,
+    }
+  }
+}
+
+pub struct Rect {
+  pub begin: Vec2<u32>,
+  pub size:  Vec2<u32>,
+}
+
+impl Rect {
+  pub fn shrink(&self, ratio: i32) -> Self {
+    Rect {
+      begin: Vec2::<u32> {
+        x: (self.begin.x as i32 + ratio) as u32,
+        y: (self.begin.y as i32 + ratio) as u32,
+      },
+      size:  Vec2::<u32> {
+        x: (self.size.x as i32 - ratio * 2) as u32,
+        y: (self.size.y as i32 - ratio * 2) as u32,
+      },
     }
   }
 }

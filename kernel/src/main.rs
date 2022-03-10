@@ -44,11 +44,15 @@ pub extern "sysv64" fn kernel_main(
   global_allocator::init(&memmap);
 
   let mut frame_manager = FrameManager::new(config);
-  let dir = Direction::Horizontal;
-  frame_manager.add(dir, PixelColor::from_hex(0x6134eb));
-  frame_manager.add(dir, PixelColor::from_hex(0x34a1eb));
-  frame_manager.add(Direction::Vertical, PixelColor::from_hex(0xde771d));
-  frame_manager.add(dir, PixelColor::from_hex(0xeb4034));
+  {
+    use Direction::*;
+    frame_manager.add(Right, PixelColor::from_hex(0x6134eb));
+    frame_manager.add(Right, PixelColor::from_hex(0x34a1eb));
+    frame_manager.add(Bottom, PixelColor::from_hex(0xde771d));
+    frame_manager.add(Right, PixelColor::from_hex(0xeb4034));
+    frame_manager.add(Bottom, PixelColor::from_hex(0x1d2ade));
+    frame_manager.add(Right, PixelColor::from_hex(0xde1d74));
+  }
   frame_manager.draw(config);
 
   loop {
