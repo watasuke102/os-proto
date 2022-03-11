@@ -1,4 +1,5 @@
 BUILD_DIR  := build
+COMMON_SRC := $(wildcard common/src/*.rs)
 LOADER_SRC := $(wildcard loader/src/*.rs)
 KERNEL_SRC := $(wildcard kernel/src/*.rs)
 KERNEL_SRC += $(wildcard kernel/src/memory/*.rs)
@@ -20,6 +21,6 @@ kernel: $(BUILD_DIR)/kernel.elf
 $(BUILD_DIR)/loader.efi: ~/program/mikanos-book/src/MikanLoaderPkg/Main.c
 	cp ~/program/mikanos-book/build/Loader.efi build/loader.efi
 
-$(BUILD_DIR)/kernel.elf: $(KERNEL_SRC)
+$(BUILD_DIR)/kernel.elf: $(COMMON_SRC) $(KERNEL_SRC)
 	cd kernel && cargo build
 	cp kernel/target/x86_64-unknown-os/debug/kernel $(BUILD_DIR)/kernel.elf

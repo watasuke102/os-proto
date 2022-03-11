@@ -10,60 +10,6 @@ pub enum Direction {
   Right,
 }
 
-use core::ops::{Add, Mul, Sub};
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Vec2<T> {
-  pub x: T,
-  pub y: T,
-}
-impl<T: Add<Output = T>> Add for Vec2<T> {
-  type Output = Self;
-  fn add(self, other: Self) -> Self {
-    Self {
-      x: self.x + other.x,
-      y: self.y + other.y,
-    }
-  }
-}
-impl<T: Sub<Output = T>> Sub for Vec2<T> {
-  type Output = Self;
-  fn sub(self, other: Self) -> Self {
-    Self {
-      x: self.x - other.x,
-      y: self.y - other.y,
-    }
-  }
-}
-impl<T: Mul<Output = T>> Mul for Vec2<T> {
-  type Output = Self;
-  fn mul(self, other: Self) -> Self {
-    Self {
-      x: self.x * other.x,
-      y: self.y * other.y,
-    }
-  }
-}
-
-pub struct Rect {
-  pub begin: Vec2<u32>,
-  pub size:  Vec2<u32>,
-}
-
-impl Rect {
-  pub fn shrink(&self, ratio: i32) -> Self {
-    Rect {
-      begin: Vec2::<u32> {
-        x: (self.begin.x as i32 + ratio) as u32,
-        y: (self.begin.y as i32 + ratio) as u32,
-      },
-      size:  Vec2::<u32> {
-        x: (self.size.x as i32 - ratio * 2) as u32,
-        y: (self.size.y as i32 - ratio * 2) as u32,
-      },
-    }
-  }
-}
-
 use core::fmt::Write;
 use uart_16550::SerialPort;
 

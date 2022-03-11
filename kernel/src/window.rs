@@ -1,21 +1,21 @@
-use crate::{FrameBufferConfig, PixelColor};
 use alloc::{rc::Rc, vec, vec::Vec};
+use common::{frame_buffer::*, rect::Rect, vec2::Vec2};
 use core::cell::{Cell, Ref, RefCell};
-use kernel::{print, serial_println, Direction, Rect, Vec2};
+use kernel::{print, serial_println, Direction};
 use x86_64::structures::paging::frame;
 
 type FrameSize = Vec2<u32>;
 type FramePos = Vec2<u32>;
 
 trait Frame {
-  fn draw(&self, buffer: &FrameBufferConfig, pos: FramePos, size: FrameSize);
+  fn draw(&self, buffer: &FrameBuffer, pos: FramePos, size: FrameSize);
 }
 
 pub struct Window {
   pub color: PixelColor,
 }
 impl Frame for Window {
-  fn draw(&self, buffer: &FrameBufferConfig, pos: FramePos, size: FrameSize) {
+  fn draw(&self, buffer: &FrameBuffer, pos: FramePos, size: FrameSize) {
     let rect = Rect { begin: pos, size }.shrink(4);
     serial_println!("draw at: {:?} | size: {:?}", pos, size);
     buffer.write_rect_with_border(
@@ -68,7 +68,7 @@ impl FrameContainer {
   }
 }
 impl Frame for FrameContainer {
-  fn draw(&self, buffer: &FrameBufferConfig, pos: FramePos, size: FrameSize) {
+  fn draw(&self, buffer: &FrameBuffer, pos: FramePos, size: FrameSize) {
     let child_size = self.children_size(size);
     for (i, frame) in self.list.iter().enumerate() {
       frame.borrow().draw(
@@ -92,13 +92,12 @@ pub struct FrameManager {
 }
 
 impl FrameManager {
-  pub fn new(frame_buffer: &FrameBufferConfig) -> FrameManager {
+  pub fn new(frame_buffer: &FrameBuffer) -> FrameManager {
+    let FrameSize { x, y } = frame_buffer.resolution;
     FrameManager {
       active_container: None,
       head:             None,
-      buffer:           Vec::with_capacity(
-        (frame_buffer.vertical_resolution * frame_buffer.horizontal_resolution) as usize,
-      ),
+      buffer:           Vec::with_capacity((x * y) as usize),
     }
   }
   pub fn add(&mut self, dir: Direction, color: PixelColor) {
@@ -137,10 +136,10 @@ impl FrameManager {
     self.active_container = Some(new_active_container.clone());
   }
 
-  pub fn draw(&self, frame_buffer: &FrameBufferConfig) {
+  pub fn draw(&self, frame_buffer: &FrameBuffer) {
     frame_buffer.write_rect(
       Vec2::<u32> { x: 0, y: 0 },
-      frame_buffer.size(),
+      frame_buffer.resolution,
       &PixelColor::from_hex(0x32a852),
       true,
     );
@@ -148,10 +147,7 @@ impl FrameManager {
       head.borrow().draw(
         frame_buffer,
         FramePos { x: 0, y: 0 },
-        FrameSize {
-          x: frame_buffer.horizontal_resolution,
-          y: frame_buffer.vertical_resolution,
-        },
+        frame_buffer.resolution,
       );
     }
   }

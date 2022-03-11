@@ -1,4 +1,5 @@
-use crate::Vec2;
+use crate::vec2::Vec2;
+use uefi::proto::console::gop::PixelFormat;
 
 pub struct PixelColor {
   r: u8,
@@ -18,42 +19,33 @@ impl PixelColor {
   }
 }
 
-enum PixelFormat {
-  RgbResv8bit,
-  BgrResv8bit,
+pub struct FrameBuffer {
+  pub frame_buffer: *mut [u8; 4],
+  pub stride:       usize,
+  pub resolution:   Vec2<u32>,
+  pub pixel_format: PixelFormat,
 }
 
-pub struct FrameBufferConfig {
-  pub frame_buffer:          *mut [u8; 4],
-  pub pixels_per_scan_line:  u32,
-  pub horizontal_resolution: u32,
-  pub vertical_resolution:   u32,
-  pixel_format:              PixelFormat,
-}
-
-impl FrameBufferConfig {
-  pub fn size(&self) -> Vec2<u32> {
-    Vec2::<u32> {
-      x: self.horizontal_resolution,
-      y: self.vertical_resolution,
-    }
-  }
+impl FrameBuffer {
   pub fn write_pixel(&self, pos: Vec2<u32>, c: &PixelColor) {
     let p = (self.frame_buffer as u64 +
-      4 * (pos.x as u32 + pos.y as u32 * self.horizontal_resolution) as u64)
-      as *mut [u8; 4];
+      4 * (pos.x as u32 + pos.y as u32 * self.resolution.x) as u64) as *mut [u8; 4];
     unsafe {
       match self.pixel_format {
-        PixelFormat::RgbResv8bit => {
+        PixelFormat::Rgb => {
           (*p)[0] = c.r;
           (*p)[1] = c.g;
           (*p)[2] = c.b;
         }
-        PixelFormat::BgrResv8bit => {
+        PixelFormat::Bgr => {
           (*p)[0] = c.b;
           (*p)[1] = c.g;
           (*p)[2] = c.r;
         }
+        _ => panic!(
+          "Not implemented pixel format ({})",
+          self.pixel_format as u32
+        ),
       }
     }
   }
@@ -101,7 +93,7 @@ impl FrameBufferConfig {
   ) {
     let mut diff = Vec2::<u32> { x: 0, y: 0 };
     let two = Vec2::<u32> { x: 2, y: 2 };
-    for i in 0..border_size {
+    for _ in 0..border_size {
       self.write_rect(begin + diff, size - diff * two, border_color, false);
       diff.x += 1;
       diff.y += 1;

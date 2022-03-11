@@ -10,15 +10,13 @@
 extern crate alloc;
 mod linked_list;
 mod memory;
-mod pixel_writer;
 mod window;
 
 use alloc::{alloc::Layout, vec};
+use common::frame_buffer::*;
 use core::{arch::asm, panic::PanicInfo};
 use kernel::*;
-use kernel::{Direction, Vec2};
 use memory::*;
-use pixel_writer::*;
 use window::*;
 
 use crate::memory::memory_map::MemoryType;
@@ -35,7 +33,7 @@ fn handle_alloc_error(layout: Layout) -> ! {
 
 #[no_mangle]
 pub extern "sysv64" fn kernel_main(
-  config: &mut FrameBufferConfig,
+  config: &mut FrameBuffer,
   memmap: &memory_map::MemoryMap,
   _acpi_table: u64,
 ) -> ! {
