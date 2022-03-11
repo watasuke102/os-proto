@@ -13,13 +13,11 @@ mod memory;
 mod window;
 
 use alloc::{alloc::Layout, vec};
-use common::frame_buffer::*;
+use common::{frame_buffer::*, memory_map::MemoryMap};
 use core::{arch::asm, panic::PanicInfo};
 use kernel::*;
 use memory::*;
 use window::*;
-
-use crate::memory::memory_map::MemoryType;
 
 #[panic_handler]
 fn handle_panic(info: &PanicInfo) -> ! {
@@ -32,11 +30,7 @@ fn handle_alloc_error(layout: Layout) -> ! {
 }
 
 #[no_mangle]
-pub extern "sysv64" fn kernel_main(
-  config: &mut FrameBuffer,
-  memmap: &memory_map::MemoryMap,
-  _acpi_table: u64,
-) -> ! {
+pub extern "sysv64" fn kernel_main(config: &mut FrameBuffer, memmap: &MemoryMap) -> ! {
   segment::init();
   paging::init();
   global_allocator::init(&memmap);

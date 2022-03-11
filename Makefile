@@ -5,8 +5,9 @@ KERNEL_SRC := $(wildcard kernel/src/*.rs)
 KERNEL_SRC += $(wildcard kernel/src/memory/*.rs)
 KERNEL_SRC += kernel/src/entry.asm
 
-.PHONY: run mount umount kill loader kernel
-run: $(BUILD_DIR)/kernel.elf $(BUILD_DIR)/loader.efi
+.PHONY: all run mount umount kill loader kernel
+all: $(BUILD_DIR)/kernel.elf $(BUILD_DIR)/loader.efi run
+run:
 	./boot.sh
 mount:
 	sudo mount -o loop $(BUILD_DIR)/disk.img $(BUILD_DIR)/mnt

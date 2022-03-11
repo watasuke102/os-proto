@@ -1,36 +1,22 @@
-use crate::memory::memory_map::MemoryDescriptor;
-use crate::memory::{linked_list_allocator::LinkedListAllocator, memory_map::MemoryMap};
+use crate::memory::linked_list_allocator::LinkedListAllocator;
 use crate::{print, serial_print, serial_println};
 use alloc::alloc::{GlobalAlloc, Layout};
+use common::memory_map::{is_available_memory, MemoryMap};
 use core::ptr::null_mut;
 use spin::{Mutex, MutexGuard};
-
-use super::memory_map::MemoryType;
 
 #[global_allocator]
 static ALLOCATOR: Allocator = Allocator::new(LinkedListAllocator::new());
 
 const UEFI_PAGE_SIZE: usize = 4096;
 
-#[rustfmt::skip]
-fn is_available_memory(typ: u32) -> bool {
-  typ == MemoryType::BootServicesCode   as u32 ||
-  typ == MemoryType::BootServicesData   as u32 ||
-  typ == MemoryType::ConventionalMemory as u32
-}
-
 pub fn init(memmap: &MemoryMap) {
-  for i in 0..(memmap.map_size / memmap.descriptor_size) {
-    let desc = unsafe {
-      let ptr = memmap.descriptor_list + (memmap.descriptor_size * i) as usize;
-      &*(ptr as *const MemoryDescriptor)
-    };
-
-    if is_available_memory(desc.memory_type) {
+  for desc in &memmap.list {
+    if is_available_memory(desc.ty) {
       unsafe {
         ALLOCATOR.lock().add_free_region(
-          desc.physical_start,
-          desc.number_of_pages as usize * UEFI_PAGE_SIZE,
+          desc.phys_start as usize,
+          desc.page_count as usize * UEFI_PAGE_SIZE,
         );
       }
     }
