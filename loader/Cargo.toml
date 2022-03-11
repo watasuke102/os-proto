@@ -4,3 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+common = {path = "../common"}
+uefi = {version = "0.14.0", features = ["exts"]}
+uefi-services = "0.11"
