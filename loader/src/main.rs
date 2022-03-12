@@ -26,6 +26,7 @@ use uefi::{
   ResultExt,
 };
 
+#[derive(Debug)]
 struct LoadSegment {
   begin:       u64,
   end:         u64,
@@ -37,10 +38,14 @@ struct LoadSegment {
 
 #[entry]
 fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
-  macro_rules! println {
+  macro_rules! print {
     ($($arg:tt)*) => {
-      writeln!(table.stdout(), "{}", format_args!($($arg)*)).unwrap();
+      write!(table.stdout(), "{}", format_args!($($arg)*)).unwrap();
     };
+  }
+  macro_rules! println {
+    () => { print!("\n"); };
+    ($($arg:tt)*) => { print!("{}\n", format_args!($($arg)*)); };
   }
 
   table.stdout().clear().unwrap_success();
@@ -83,10 +88,11 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
         begin:       program_header.paddr(),
         end:         program_header.paddr() + program_header.memsz(),
         offset:      program_header.offset(),
-        vaddr:       program_header.vaddr(),
+        vaddr:       program_header.paddr(),
         file_size:   program_header.filesz(),
         memory_size: program_header.memsz(),
       });
+      println!("{:?}", load_segment[load_segment.len() - 1]);
     }
   }
   // allocate page
@@ -118,14 +124,32 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
   };
   println!("[Debug] allocated: {}", kernel_page);
   // load kernel to memory
+  println!("====================================================");
   let (kernel_ptr, _, _) = loader_pool.into_raw_parts();
+  println!("[Debug] ptr: {}", kernel_ptr as usize);
   for seg in load_segment.iter() {
-    let dst = seg.vaddr as *mut u8;
     let src = (kernel_ptr as u64 + seg.offset) as *mut u8;
+    let dst = seg.vaddr as *mut u8;
+    println!(
+      "[Debug] copying {:6} byte from {:8} to {:8}",
+      seg.file_size as usize, src as u64, dst as u64
+    );
     unsafe {
-      core::ptr::copy(src, dst, seg.file_size as usize);
+      core::ptr::copy_nonoverlapping(src, dst, seg.file_size as usize);
+      let dst = (dst as u64 + seg.file_size) as *mut u8;
+      //core::ptr::write_bytes(dst, 0, (seg.memory_size - seg.file_size) as usize);
+      for i in 0..32 {
+        print!("{:02x}", *((src as u64 + i as u64) as *const u8))
+      }
+      *(dst as u64 as *mut u64) = u64::MAX;
+      println!();
+      for i in 0..32 {
+        print!("{:02x}", *((dst as u64 + i as u64) as *const u8))
+      }
+      println!();
     }
   }
+  println!("====================================================");
   println!("[Debug] finished loading");
 
   // get memmap
