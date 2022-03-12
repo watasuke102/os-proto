@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 uefi = "0.14.0"
+uart_16550 = "0.2.16"

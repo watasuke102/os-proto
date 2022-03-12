@@ -13,7 +13,7 @@ mod memory;
 mod window;
 
 use alloc::{alloc::Layout, vec};
-use common::{frame_buffer::*, memory_map::MemoryMap};
+use common::{frame_buffer::*, memory_map::MemoryMap, serial_println};
 use core::{arch::asm, panic::PanicInfo};
 use kernel::*;
 use memory::*;
@@ -21,7 +21,7 @@ use window::*;
 
 #[panic_handler]
 fn handle_panic(info: &PanicInfo) -> ! {
-  kernel::serial_println!("[PANIC] {}", info);
+  serial_println!("[PANIC] {}", info);
   loop {}
 }
 #[alloc_error_handler]

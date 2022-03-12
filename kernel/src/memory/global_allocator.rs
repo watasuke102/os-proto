@@ -1,5 +1,5 @@
 use crate::memory::linked_list_allocator::LinkedListAllocator;
-use crate::{print, serial_print, serial_println};
+use crate::serial_println;
 use alloc::alloc::{GlobalAlloc, Layout};
 use common::memory_map::{is_available_memory, MemoryMap};
 use core::ptr::null_mut;

@@ -1,7 +1,7 @@
 use alloc::{rc::Rc, vec, vec::Vec};
-use common::{frame_buffer::*, rect::Rect, vec2::Vec2};
+use common::{frame_buffer::*, rect::Rect, serial_println, vec2::Vec2};
 use core::cell::{Cell, Ref, RefCell};
-use kernel::{print, serial_println, Direction};
+use kernel::Direction;
 use x86_64::structures::paging::frame;
 
 type FrameSize = Vec2<u32>;
