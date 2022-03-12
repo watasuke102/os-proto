@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 #![feature(abi_efiapi)]
+#![feature(vec_into_raw_parts)]
 #![allow(dead_code)]
 #![allow(unused_imports)]
 #![allow(unused_variables)]
@@ -9,15 +10,11 @@ extern crate alloc;
 use alloc::{vec, vec::Vec};
 use common::{
   frame_buffer::*,
-  memory_map::{is_available_memory, MemoryMap},
+  memory_map::{is_available_memory, MemoryMap, MEMORYMAP_LIST_LEN},
+  serial_println,
   vec2::Vec2,
 };
-use core::{
-  arch::asm,
-  cmp::{max, min},
-  fmt::Write,
-  mem::{self, size_of},
-};
+use core::{arch::asm, fmt::Write};
 use elf_rs::{Elf, ElfFile, ProgramType};
 use uefi::{
   prelude::*,
@@ -25,18 +22,33 @@ use uefi::{
     console::gop::GraphicsOutput,
     media::file::{File, FileAttribute, FileMode, FileType::*, RegularFile},
   },
-  table::boot::{AllocateType, MemoryAttribute, MemoryType},
+  table::boot::{AllocateType, MemoryDescriptor, MemoryType},
   ResultExt,
 };
 
+struct LoadSegment {
+  begin:       u64,
+  end:         u64,
+  offset:      u64,
+  vaddr:       u64,
+  memory_size: u64,
+  file_size:   u64,
+}
+
 #[entry]
 fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
+  macro_rules! println {
+    ($($arg:tt)*) => {
+      writeln!(table.stdout(), "{}", format_args!($($arg)*)).unwrap();
+    };
+  }
+
   table.stdout().clear().unwrap_success();
   uefi_services::init(&mut table).unwrap_success();
-  writeln!(table.stdout(), "[Log] Started boot loader").unwrap();
+  println!("[Log] Started boot loader");
 
   // get GOP
-  writeln!(table.stdout(), "[Log] Loading GOP").unwrap();
+  println!("[Log] Loading GOP");
   let gop = unsafe {
     &mut *(table
       .boot_services()
@@ -55,26 +67,37 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
   };
 
   // open kernel file
-  writeln!(table.stdout(), "[Log] Loading kernel").unwrap();
+  println!("[Log] Loading kernel");
   let (mut kernel_file, kernel_size) = open_file(table.boot_services(), &handle, "kernel.elf");
   let mut loader_pool = vec![0; kernel_size as usize];
   kernel_file.read(&mut loader_pool).unwrap_success();
-  writeln!(table.stdout(), "[Debug] {}", loader_pool.len()).unwrap();
+  println!("[Debug] {}", loader_pool.len());
   // calculate LOAD segment range
   let elf = Elf::from_bytes(&loader_pool).unwrap();
-  let mut kernel_addr_first = Vec::<u64>::new();
-  let mut kernel_addr_last = Vec::<u64>::new();
+  let kernel_entry = elf.entry_point();
+  println!("[Debug] entrypoint: 0x{}", kernel_entry);
+  let mut load_segment = Vec::<LoadSegment>::new();
   for program_header in elf.program_header_iter() {
     if program_header.ph_type() == ProgramType::LOAD {
-      kernel_addr_first.push(program_header.paddr());
-      kernel_addr_last.push(program_header.paddr() + program_header.memsz());
-      writeln!(table.stdout(), "[Debug] {:?}", program_header).unwrap();
+      load_segment.push(LoadSegment {
+        begin:       program_header.paddr(),
+        end:         program_header.paddr() + program_header.memsz(),
+        offset:      program_header.offset(),
+        vaddr:       program_header.vaddr(),
+        file_size:   program_header.filesz(),
+        memory_size: program_header.memsz(),
+      });
     }
   }
   // allocate page
   let kernel_page = {
-    let kernel_addr_first = *kernel_addr_first.iter().min().unwrap();
-    let kernel_addr_last = *kernel_addr_last.iter().max().unwrap();
+    let kernel_addr_first =
+      load_segment
+        .iter()
+        .fold(u64::MAX, |a, e| if a < e.begin { a } else { e.begin });
+    let kernel_addr_last = load_segment
+      .iter()
+      .fold(0, |a, e| if a > e.end { a } else { e.begin });
     writeln!(
       table.stdout(),
       "[Debug] begin: {}, last: {}",
@@ -93,23 +116,42 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
       )
       .unwrap_success()
   };
-  writeln!(table.stdout(), "[Debug] allocated: {}", kernel_page).unwrap();
+  println!("[Debug] allocated: {}", kernel_page);
   // load kernel to memory
+  let (kernel_ptr, _, _) = loader_pool.into_raw_parts();
+  for seg in load_segment.iter() {
+    let dst = seg.vaddr as *mut u8;
+    let src = (kernel_ptr as u64 + seg.offset) as *mut u8;
+    unsafe {
+      core::ptr::copy(src, dst, seg.file_size as usize);
+    }
+  }
+  println!("[Debug] finished loading");
 
   // get memmap
   let memmap_size = table.boot_services().memory_map_size().map_size;
   let mut memmap = MemoryMap {
-    list: Vec::new(),
+    list: [MemoryDescriptor::default(); MEMORYMAP_LIST_LEN],
     len:  0,
   };
   let mut buf = [0 as u8; 1024 * 4];
-  let (memmap_key, memmap_iter) = table.boot_services().memory_map(&mut buf).unwrap_success();
+  println!("[Info] Exiting boot services");
+  let (memmap_key, memmap_iter) = table.exit_boot_services(handle, &mut buf).unwrap_success();
+  serial_println!("[Debug] end of boot services memmap: {}", memmap_iter.len());
 
   for desc in memmap_iter {
     if is_available_memory(desc.ty) {
-      memmap.list.push(*desc);
+      serial_println!("[Debug] start {}", memmap.len);
+      memmap.list[memmap.len] = *desc;
       memmap.len += 1;
     }
+  }
+
+  let entry = kernel_entry as *const extern "sysv64" fn(&FrameBuffer, &MemoryMap);
+  //let entry = 0x1282f0 as *const extern "sysv64" fn(&FrameBuffer, &MemoryMap);
+  serial_println!("[Info] Let's go! (entrypoint: {})", kernel_entry);
+  unsafe {
+    (*entry)(&frame_buffer, &memmap);
   }
 
   loop {

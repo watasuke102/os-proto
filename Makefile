@@ -5,7 +5,7 @@ KERNEL_SRC := $(wildcard kernel/src/*.rs)
 KERNEL_SRC += $(wildcard kernel/src/memory/*.rs)
 KERNEL_SRC += kernel/src/entry.asm
 
-.PHONY: all run mount umount kill loader kernel
+.PHONY: all run mount umount kill loader kernel $(BUILD_DIR)/kernel.elf $(BUILD_DIR)/loader.efi
 all: $(BUILD_DIR)/kernel.elf $(BUILD_DIR)/loader.efi run
 run:
 	./boot.sh
@@ -19,10 +19,10 @@ kill:
 loader: $(BUILD_DIR)/loader.efi
 kernel: $(BUILD_DIR)/kernel.elf
 
-$(BUILD_DIR)/loader.efi: $(COMMON_SRC) $(LOADER_SRC)
+$(BUILD_DIR)/loader.efi: 
 	cd loader && cargo build
 	cp loader/target/x86_64-unknown-uefi/debug/loader.efi $(BUILD_DIR)/loader.efi
 
-$(BUILD_DIR)/kernel.elf: $(COMMON_SRC) $(KERNEL_SRC)
+$(BUILD_DIR)/kernel.elf: 
 	cd kernel && cargo build
 	cp kernel/target/x86_64-unknown-os/debug/kernel $(BUILD_DIR)/kernel.elf

@@ -1,8 +1,9 @@
-use alloc::vec::Vec;
 use uefi::table::boot::{MemoryDescriptor, MemoryType};
 
+pub const MEMORYMAP_LIST_LEN: usize = 32;
+
 pub struct MemoryMap {
-  pub list: Vec<MemoryDescriptor>,
+  pub list: [MemoryDescriptor; MEMORYMAP_LIST_LEN],
   pub len:  usize,
 }
 
