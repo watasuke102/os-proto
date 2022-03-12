@@ -54,8 +54,8 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
     pixel_format: gop.current_mode_info().pixel_format(),
   };
 
+  writeln!(table.stdout(), "[Log] Loading kernel").unwrap();
   // open root dir
-  writeln!(table.stdout(), "[Log] Loading root dir").unwrap();
   let mut dir = unsafe {
     &mut *table
       .boot_services()
@@ -91,45 +91,42 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
     Regular(f) => f,
     _ => panic!("Invalid file type"),
   };
-
   // calculate LOAD segment range
   let mut loader_pool = vec![0; kernel_size as usize];
-  // writeln!(table.stdout(), "[Debug] {}", size_of::<elf_rs::ElfType::ElfHeader>()).unwrap();
   kernel_file.read(&mut loader_pool).unwrap_success();
   writeln!(table.stdout(), "[Debug] {}", loader_pool.len()).unwrap();
   let elf = Elf::from_bytes(&loader_pool).unwrap();
-
-  let mut kernel_addr_first: u64 = u64::MAX;
-  let mut kernel_addr_last: u64 = 0;
+  let mut kernel_addr_first = Vec::<u64>::new();
+  let mut kernel_addr_last = Vec::<u64>::new();
   for program_header in elf.program_header_iter() {
     if program_header.ph_type() == ProgramType::LOAD {
-      kernel_addr_first = min(kernel_addr_first, program_header.paddr());
-      kernel_addr_last = max(
-        kernel_addr_last,
-        program_header.paddr() + program_header.memsz(),
-      );
+      kernel_addr_first.push(program_header.paddr());
+      kernel_addr_last.push(program_header.paddr() + program_header.memsz());
       writeln!(table.stdout(), "[Debug] {:?}", program_header).unwrap();
     }
   }
-  writeln!(
-    table.stdout(),
-    "[Debug] begin: {}, last: {}",
-    kernel_addr_first,
-    kernel_addr_last
-  )
-  .unwrap();
-
   // load kernel to allocated page
-  let page_count: usize = ((kernel_addr_last - kernel_addr_first + 0xfff) / 0x1000) as usize;
-  let kernel_page = table
-    .boot_services()
-    .allocate_pages(
-      AllocateType::Address(kernel_addr_first as usize),
-      MemoryType::LOADER_DATA,
-      page_count,
+  {
+    let kernel_addr_first = *kernel_addr_first.iter().min().unwrap();
+    let kernel_addr_last = *kernel_addr_last.iter().max().unwrap();
+    writeln!(
+      table.stdout(),
+      "[Debug] begin: {}, last: {}",
+      kernel_addr_first,
+      kernel_addr_last
     )
-    .unwrap_success();
-  writeln!(table.stdout(), "[Debug] allocated: {}", kernel_page).unwrap();
+    .unwrap();
+    let page_count: usize = ((kernel_addr_last - kernel_addr_first + 0xfff) / 0x1000) as usize;
+    let kernel_page = table
+      .boot_services()
+      .allocate_pages(
+        AllocateType::Address(kernel_addr_first as usize),
+        MemoryType::LOADER_DATA,
+        page_count,
+      )
+      .unwrap_success();
+    writeln!(table.stdout(), "[Debug] allocated: {}", kernel_page).unwrap();
+  }
 
   // get memmap
   let memmap_size = table.boot_services().memory_map_size().map_size;
