@@ -23,7 +23,7 @@ use uefi::{
   prelude::*,
   proto::{
     console::gop::GraphicsOutput,
-    media::file::{File, FileAttribute, FileMode, FileType::*},
+    media::file::{File, FileAttribute, FileMode, FileType::*, RegularFile},
   },
   table::boot::{AllocateType, MemoryAttribute, MemoryType},
   ResultExt,
@@ -54,47 +54,13 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
     pixel_format: gop.current_mode_info().pixel_format(),
   };
 
+  // open kernel file
   writeln!(table.stdout(), "[Log] Loading kernel").unwrap();
-  // open root dir
-  let mut dir = unsafe {
-    &mut *table
-      .boot_services()
-      .get_image_file_system(handle)
-      .unwrap_success()
-      .interface
-      .get()
-  }
-  .open_volume()
-  .unwrap_success();
-  // find kernel file and check file size
-  const BUFFER_SIZE: usize = 128;
-  let mut buffer: [u8; BUFFER_SIZE] = [0; BUFFER_SIZE];
-  let kernel_size = loop {
-    match dir.read_entry(&mut buffer).unwrap_success() {
-      Some(file) => {
-        if file.file_name().as_string() == "kernel.elf" {
-          break file.file_size();
-        }
-      }
-      None => panic!("`kernel.elf` is not found"),
-    }
-  };
-  writeln!(table.stdout(), "[Debug] Kernel size: {} bytes", kernel_size).unwrap();
-  // load kernel to pool
-  // FileAttribute is invalid in Read-Only open like this
-  let mut kernel_file = match dir
-    .open("kernel.elf", FileMode::Read, FileAttribute::READ_ONLY)
-    .unwrap_success()
-    .into_type()
-    .unwrap_success()
-  {
-    Regular(f) => f,
-    _ => panic!("Invalid file type"),
-  };
-  // calculate LOAD segment range
+  let (mut kernel_file, kernel_size) = open_file(table.boot_services(), &handle, "kernel.elf");
   let mut loader_pool = vec![0; kernel_size as usize];
   kernel_file.read(&mut loader_pool).unwrap_success();
   writeln!(table.stdout(), "[Debug] {}", loader_pool.len()).unwrap();
+  // calculate LOAD segment range
   let elf = Elf::from_bytes(&loader_pool).unwrap();
   let mut kernel_addr_first = Vec::<u64>::new();
   let mut kernel_addr_last = Vec::<u64>::new();
@@ -105,8 +71,8 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
       writeln!(table.stdout(), "[Debug] {:?}", program_header).unwrap();
     }
   }
-  // load kernel to allocated page
-  {
+  // allocate page
+  let kernel_page = {
     let kernel_addr_first = *kernel_addr_first.iter().min().unwrap();
     let kernel_addr_last = *kernel_addr_last.iter().max().unwrap();
     writeln!(
@@ -117,16 +83,18 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
     )
     .unwrap();
     let page_count: usize = ((kernel_addr_last - kernel_addr_first + 0xfff) / 0x1000) as usize;
-    let kernel_page = table
+
+    table
       .boot_services()
       .allocate_pages(
         AllocateType::Address(kernel_addr_first as usize),
         MemoryType::LOADER_DATA,
         page_count,
       )
-      .unwrap_success();
-    writeln!(table.stdout(), "[Debug] allocated: {}", kernel_page).unwrap();
-  }
+      .unwrap_success()
+  };
+  writeln!(table.stdout(), "[Debug] allocated: {}", kernel_page).unwrap();
+  // load kernel to memory
 
   // get memmap
   let memmap_size = table.boot_services().memory_map_size().map_size;
@@ -148,5 +116,45 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
     unsafe {
       asm!("hlt");
     }
+  }
+}
+
+/// Open file and return (file: RegularFile, size: u64)
+/// Cause panic when try to open directory (specify directory name)
+fn open_file(boot_services: &BootServices, handle: &Handle, name: &str) -> (RegularFile, u64) {
+  // open root dir
+  let mut dir = unsafe {
+    &mut *boot_services
+      .get_image_file_system(*handle)
+      .unwrap_success()
+      .interface
+      .get()
+  }
+  .open_volume()
+  .unwrap_success();
+
+  // find file and check file size
+  const BUFFER_SIZE: usize = 128;
+  let mut buffer: [u8; BUFFER_SIZE] = [0; BUFFER_SIZE];
+  let size = loop {
+    match dir.read_entry(&mut buffer).unwrap_success() {
+      Some(file) => {
+        if file.file_name().as_string() == name {
+          break file.file_size();
+        }
+      }
+      None => panic!("`kernel.elf` is not found"),
+    }
+  };
+  // load kernel to pool
+  // FileAttribute is invalid in Read-Only open like this
+  match dir
+    .open("kernel.elf", FileMode::Read, FileAttribute::READ_ONLY)
+    .unwrap_success()
+    .into_type()
+    .unwrap_success()
+  {
+    Regular(file) => (file, size),
+    _ => panic!("Invalid file type"),
   }
 }
