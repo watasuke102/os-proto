@@ -12,19 +12,25 @@ use common::{
   memory_map::{is_available_memory, MemoryMap},
   vec2::Vec2,
 };
-use core::{arch::asm, fmt::Write, mem};
+use core::{
+  arch::asm,
+  cmp::{max, min},
+  fmt::Write,
+  mem::{self, size_of},
+};
+use elf_rs::{Elf, ElfFile, ProgramType};
 use uefi::{
   prelude::*,
   proto::{
     console::gop::GraphicsOutput,
     media::file::{File, FileAttribute, FileMode, FileType::*},
   },
-  table::boot::{MemoryAttribute, MemoryType},
+  table::boot::{AllocateType, MemoryAttribute, MemoryType},
   ResultExt,
 };
 
 #[entry]
-fn main(_handle: Handle, mut table: SystemTable<Boot>) -> Status {
+fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
   table.stdout().clear().unwrap_success();
   uefi_services::init(&mut table).unwrap_success();
   writeln!(table.stdout(), "[Log] Started boot loader").unwrap();
@@ -53,7 +59,7 @@ fn main(_handle: Handle, mut table: SystemTable<Boot>) -> Status {
   let mut dir = unsafe {
     &mut *table
       .boot_services()
-      .get_image_file_system(_handle)
+      .get_image_file_system(handle)
       .unwrap_success()
       .interface
       .get()
@@ -76,7 +82,7 @@ fn main(_handle: Handle, mut table: SystemTable<Boot>) -> Status {
   writeln!(table.stdout(), "[Debug] Kernel size: {} bytes", kernel_size).unwrap();
   // load kernel to pool
   // FileAttribute is invalid in Read-Only open like this
-  let kernel_file = match dir
+  let mut kernel_file = match dir
     .open("kernel.elf", FileMode::Read, FileAttribute::READ_ONLY)
     .unwrap_success()
     .into_type()
@@ -86,10 +92,44 @@ fn main(_handle: Handle, mut table: SystemTable<Boot>) -> Status {
     _ => panic!("Invalid file type"),
   };
 
-  let loader_pool = table
+  // calculate LOAD segment range
+  let mut loader_pool = vec![0; kernel_size as usize];
+  // writeln!(table.stdout(), "[Debug] {}", size_of::<elf_rs::ElfType::ElfHeader>()).unwrap();
+  kernel_file.read(&mut loader_pool).unwrap_success();
+  writeln!(table.stdout(), "[Debug] {}", loader_pool.len()).unwrap();
+  let elf = Elf::from_bytes(&loader_pool).unwrap();
+
+  let mut kernel_addr_first: u64 = u64::MAX;
+  let mut kernel_addr_last: u64 = 0;
+  for program_header in elf.program_header_iter() {
+    if program_header.ph_type() == ProgramType::LOAD {
+      kernel_addr_first = min(kernel_addr_first, program_header.paddr());
+      kernel_addr_last = max(
+        kernel_addr_last,
+        program_header.paddr() + program_header.memsz(),
+      );
+      writeln!(table.stdout(), "[Debug] {:?}", program_header).unwrap();
+    }
+  }
+  writeln!(
+    table.stdout(),
+    "[Debug] begin: {}, last: {}",
+    kernel_addr_first,
+    kernel_addr_last
+  )
+  .unwrap();
+
+  // load kernel to allocated page
+  let page_count: usize = ((kernel_addr_last - kernel_addr_first + 0xfff) / 0x1000) as usize;
+  let kernel_page = table
     .boot_services()
-    .allocate_pool(MemoryType::LOADER_DATA, kernel_size as usize)
+    .allocate_pages(
+      AllocateType::Address(kernel_addr_first as usize),
+      MemoryType::LOADER_DATA,
+      page_count,
+    )
     .unwrap_success();
+  writeln!(table.stdout(), "[Debug] allocated: {}", kernel_page).unwrap();
 
   // get memmap
   let memmap_size = table.boot_services().memory_map_size().map_size;
@@ -97,7 +137,6 @@ fn main(_handle: Handle, mut table: SystemTable<Boot>) -> Status {
     list: Vec::new(),
     len:  0,
   };
-  writeln!(table.stdout(), "[Debug] size: {}", memmap_size).unwrap();
   let mut buf = [0 as u8; 1024 * 4];
   let (memmap_key, memmap_iter) = table.boot_services().memory_map(&mut buf).unwrap_success();
 
