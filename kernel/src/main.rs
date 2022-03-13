@@ -4,10 +4,12 @@
 #![allow(unused_imports)]
 #![allow(unused_variables)]
 #![feature(const_mut_refs)]
+#![feature(abi_x86_interrupt)]
 #![feature(alloc_error_handler)]
 #![feature(associated_type_bounds)]
 
 extern crate alloc;
+mod interrupt;
 mod linked_list;
 mod memory;
 mod window;
@@ -35,6 +37,9 @@ pub extern "sysv64" fn kernel_main(config: &mut FrameBuffer, memmap: &MemoryMap)
   segment::init();
   paging::init();
   global_allocator::init(&memmap);
+
+  interrupt::init();
+  x86_64::instructions::interrupts::int3();
 
   let mut frame_manager = FrameManager::new(config);
   {
