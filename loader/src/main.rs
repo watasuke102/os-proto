@@ -1,4 +1,5 @@
 #![no_std]
+
 #![no_main]
 #![feature(abi_efiapi)]
 #![feature(vec_into_raw_parts)]
@@ -11,7 +12,7 @@ use alloc::{vec, vec::Vec};
 use common::{
   frame_buffer::*,
   memory_map::{is_available_memory, MemoryMap, MEMORYMAP_LIST_LEN},
-  serial_println,
+  serial_print, serial_println,
   vec2::Vec2,
 };
 use core::{arch::asm, fmt::Write};
@@ -24,6 +25,7 @@ use uefi::{
   },
   table::boot::{AllocateType, MemoryDescriptor, MemoryType},
   ResultExt,
+  
 };
 
 #[derive(Debug)]
@@ -39,13 +41,11 @@ struct LoadSegment {
 #[entry]
 fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
   macro_rules! print {
-    ($($arg:tt)*) => {
-      write!(table.stdout(), "{}", format_args!($($arg)*)).unwrap();
-    };
+    ($($arg:tt)*) => { write!(table.stdout(), "{}", format_args!($($arg)*)).unwrap() };
   }
   macro_rules! println {
     () => { print!("\n"); };
-    ($($arg:tt)*) => { print!("{}\n", format_args!($($arg)*)); };
+    ($($arg:tt)*) => { print!("{}\n", format_args!($($arg)*)) };
   }
 
   table.stdout().clear().unwrap_success();
@@ -80,7 +80,7 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
   // calculate LOAD segment range
   let elf = Elf::from_bytes(&loader_pool).unwrap();
   let kernel_entry = elf.entry_point();
-  println!("[Debug] entrypoint: 0x{}", kernel_entry);
+  println!("[Debug] entrypoint: 0x{:x}", kernel_entry);
   let mut load_segment = Vec::<LoadSegment>::new();
   for program_header in elf.program_header_iter() {
     if program_header.ph_type() == ProgramType::LOAD {
@@ -88,7 +88,7 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
         begin:       program_header.paddr(),
         end:         program_header.paddr() + program_header.memsz(),
         offset:      program_header.offset(),
-        vaddr:       program_header.paddr(),
+        vaddr:       program_header.vaddr(),
         file_size:   program_header.filesz(),
         memory_size: program_header.memsz(),
       });
@@ -104,23 +104,28 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
     let kernel_addr_last = load_segment
       .iter()
       .fold(0, |a, e| if a > e.end { a } else { e.begin });
-    writeln!(
-      table.stdout(),
-      "[Debug] begin: {}, last: {}",
-      kernel_addr_first,
-      kernel_addr_last
-    )
-    .unwrap();
     let page_count: usize = ((kernel_addr_last - kernel_addr_first + 0xfff) / 0x1000) as usize;
 
+    writeln!(
+      table.stdout(),
+      "[Debug] begin: {}, last: {}, pages: {}",
+      kernel_addr_first,
+      kernel_addr_last,
+      page_count,
+    )
+    .unwrap();
+
+    /*
     table
-      .boot_services()
+    .boot_services()
       .allocate_pages(
         AllocateType::Address(kernel_addr_first as usize),
         MemoryType::LOADER_DATA,
         page_count,
       )
       .unwrap_success()
+      */
+    0
   };
   println!("[Debug] allocated: {}", kernel_page);
   // load kernel to memory
@@ -134,14 +139,16 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
       "[Debug] copying {:6} byte from {:8} to {:8}",
       seg.file_size as usize, src as u64, dst as u64
     );
+
     unsafe {
-      core::ptr::copy_nonoverlapping(src, dst, seg.file_size as usize);
-      let dst = (dst as u64 + seg.file_size) as *mut u8;
-      //core::ptr::write_bytes(dst, 0, (seg.memory_size - seg.file_size) as usize);
+      core::ptr::copy(src, dst, seg.file_size as usize);
+      {
+        let dst = (dst as u64 + seg.file_size) as *mut u8;
+        core::ptr::write_bytes(dst, 0, (seg.memory_size - seg.file_size) as usize);
+      }
       for i in 0..32 {
         print!("{:02x}", *((src as u64 + i as u64) as *const u8))
       }
-      *(dst as u64 as *mut u64) = u64::MAX;
       println!();
       for i in 0..32 {
         print!("{:02x}", *((dst as u64 + i as u64) as *const u8))
@@ -165,18 +172,25 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
 
   for desc in memmap_iter {
     if is_available_memory(desc.ty) {
-      serial_println!("[Debug] start {}", memmap.len);
       memmap.list[memmap.len] = *desc;
       memmap.len += 1;
     }
   }
 
-  let entry = kernel_entry as *const extern "sysv64" fn(&FrameBuffer, &MemoryMap);
-  //let entry = 0x1282f0 as *const extern "sysv64" fn(&FrameBuffer, &MemoryMap);
-  serial_println!("[Info] Let's go! (entrypoint: {})", kernel_entry);
-  unsafe {
-    (*entry)(&frame_buffer, &memmap);
+  let entry: extern "sysv64" fn(&FrameBuffer, &MemoryMap) =
+    unsafe { core::mem::transmute(kernel_entry) };
+  serial_println!(
+    "[Info] Let's go! (entrypoint: 0x{:x} | 0x{:x})",
+    kernel_entry,
+    entry as u64
+  );
+  for i in 0..16 {
+    unsafe {
+      serial_print!("{:02x}", *((kernel_entry + i as u64) as *const u8));
+    }
   }
+  serial_println!();
+  entry(&frame_buffer, &memmap);
 
   loop {
     unsafe {

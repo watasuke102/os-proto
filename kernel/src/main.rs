@@ -31,6 +31,7 @@ fn handle_alloc_error(layout: Layout) -> ! {
 
 #[no_mangle]
 pub extern "sysv64" fn kernel_main(config: &mut FrameBuffer, memmap: &MemoryMap) -> ! {
+  serial_println!("Welcome to kernel!");
   segment::init();
   paging::init();
   global_allocator::init(&memmap);
