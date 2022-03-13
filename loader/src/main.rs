@@ -1,5 +1,4 @@
 #![no_std]
-
 #![no_main]
 #![feature(abi_efiapi)]
 #![feature(vec_into_raw_parts)]
@@ -25,7 +24,6 @@ use uefi::{
   },
   table::boot::{AllocateType, MemoryDescriptor, MemoryType},
   ResultExt,
-  
 };
 
 #[derive(Debug)]
@@ -76,11 +74,9 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
   let (mut kernel_file, kernel_size) = open_file(table.boot_services(), &handle, "kernel.elf");
   let mut loader_pool = vec![0; kernel_size as usize];
   kernel_file.read(&mut loader_pool).unwrap_success();
-  println!("[Debug] {}", loader_pool.len());
   // calculate LOAD segment range
   let elf = Elf::from_bytes(&loader_pool).unwrap();
   let kernel_entry = elf.entry_point();
-  println!("[Debug] entrypoint: 0x{:x}", kernel_entry);
   let mut load_segment = Vec::<LoadSegment>::new();
   for program_header in elf.program_header_iter() {
     if program_header.ph_type() == ProgramType::LOAD {
@@ -92,72 +88,20 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
         file_size:   program_header.filesz(),
         memory_size: program_header.memsz(),
       });
-      println!("{:?}", load_segment[load_segment.len() - 1]);
     }
   }
-  // allocate page
-  let kernel_page = {
-    let kernel_addr_first =
-      load_segment
-        .iter()
-        .fold(u64::MAX, |a, e| if a < e.begin { a } else { e.begin });
-    let kernel_addr_last = load_segment
-      .iter()
-      .fold(0, |a, e| if a > e.end { a } else { e.begin });
-    let page_count: usize = ((kernel_addr_last - kernel_addr_first + 0xfff) / 0x1000) as usize;
-
-    writeln!(
-      table.stdout(),
-      "[Debug] begin: {}, last: {}, pages: {}",
-      kernel_addr_first,
-      kernel_addr_last,
-      page_count,
-    )
-    .unwrap();
-
-    /*
-    table
-    .boot_services()
-      .allocate_pages(
-        AllocateType::Address(kernel_addr_first as usize),
-        MemoryType::LOADER_DATA,
-        page_count,
-      )
-      .unwrap_success()
-      */
-    0
-  };
-  println!("[Debug] allocated: {}", kernel_page);
   // load kernel to memory
-  println!("====================================================");
   let (kernel_ptr, _, _) = loader_pool.into_raw_parts();
-  println!("[Debug] ptr: {}", kernel_ptr as usize);
   for seg in load_segment.iter() {
     let src = (kernel_ptr as u64 + seg.offset) as *mut u8;
     let dst = seg.vaddr as *mut u8;
-    println!(
-      "[Debug] copying {:6} byte from {:8} to {:8}",
-      seg.file_size as usize, src as u64, dst as u64
-    );
 
     unsafe {
       core::ptr::copy(src, dst, seg.file_size as usize);
-      {
-        let dst = (dst as u64 + seg.file_size) as *mut u8;
-        core::ptr::write_bytes(dst, 0, (seg.memory_size - seg.file_size) as usize);
-      }
-      for i in 0..32 {
-        print!("{:02x}", *((src as u64 + i as u64) as *const u8))
-      }
-      println!();
-      for i in 0..32 {
-        print!("{:02x}", *((dst as u64 + i as u64) as *const u8))
-      }
-      println!();
+      let dst = (dst as u64 + seg.file_size) as *mut u8;
+      core::ptr::write_bytes(dst, 0, (seg.memory_size - seg.file_size) as usize);
     }
   }
-  println!("====================================================");
-  println!("[Debug] finished loading");
 
   // get memmap
   let memmap_size = table.boot_services().memory_map_size().map_size;
@@ -184,12 +128,6 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
     kernel_entry,
     entry as u64
   );
-  for i in 0..16 {
-    unsafe {
-      serial_print!("{:02x}", *((kernel_entry + i as u64) as *const u8));
-    }
-  }
-  serial_println!();
   entry(&frame_buffer, &memmap);
 
   loop {
