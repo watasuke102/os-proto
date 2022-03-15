@@ -22,9 +22,11 @@ pub fn init(memmap: &MemoryMap) {
     }
   }
 
+  let size = ALLOCATOR.lock().total_size();
   serial_println!(
-    "Allocator inited: total_size={}",
-    ALLOCATOR.lock().total_size()
+    "Allocator inited: total_size={} ({} MB)",
+    size,
+    size / (1024 * 1024),
   );
 }
 

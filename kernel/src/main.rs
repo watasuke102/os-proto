@@ -15,16 +15,19 @@ mod memory;
 mod window;
 
 use alloc::{alloc::Layout, vec};
-use common::{frame_buffer::*, memory_map::MemoryMap, serial_println};
+use common::{frame_buffer::*, memory_map::MemoryMap, serial_print, serial_println};
 use core::{arch::asm, panic::PanicInfo};
 use kernel::*;
 use memory::*;
 use window::*;
+use x86_64::instructions::hlt;
 
 #[panic_handler]
 fn handle_panic(info: &PanicInfo) -> ! {
   serial_println!("[PANIC] {}", info);
-  loop {}
+  loop {
+    hlt();
+  }
 }
 #[alloc_error_handler]
 fn handle_alloc_error(layout: Layout) -> ! {
@@ -37,9 +40,7 @@ pub extern "sysv64" fn kernel_main(config: &mut FrameBuffer, memmap: &MemoryMap)
   segment::init();
   paging::init();
   global_allocator::init(&memmap);
-
   interrupt::init();
-  x86_64::instructions::interrupts::int3();
 
   let mut frame_manager = FrameManager::new(config);
   {
@@ -53,9 +54,15 @@ pub extern "sysv64" fn kernel_main(config: &mut FrameBuffer, memmap: &MemoryMap)
   }
   frame_manager.draw(config);
 
+  //x86_64::instructions::interrupts::int3();
+
+  serial_println!("[Info] All done!");
   loop {
-    unsafe {
-      asm!("hlt");
-    }
+    /*
+    serial_print!(".");
+    for i in 0..40000_000 {}
+    //x86_64::instructions::interrupts::int3();
+    */
+    hlt();
   }
 }
