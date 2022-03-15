@@ -17,7 +17,7 @@ pub struct Window {
 impl Frame for Window {
   fn draw(&self, buffer: &FrameBuffer, pos: FramePos, size: FrameSize) {
     let rect = Rect { begin: pos, size }.shrink(4);
-    serial_println!("draw at: {:<10} | size: {:<10}", pos, size);
+    //serial_println!("draw at: {:<10} | size: {:<10}", pos, size);
     buffer.write_rect_with_border(
       rect.begin,
       rect.size,
@@ -88,16 +88,22 @@ impl Frame for FrameContainer {
 pub struct FrameManager {
   active_container: Option<Rc<RefCell<FrameContainer>>>,
   head:             Option<Rc<RefCell<FrameContainer>>>,
-  buffer:           Vec<PixelColor>,
+  buffer:           FrameBuffer,
 }
 
 impl FrameManager {
   pub fn new(frame_buffer: &FrameBuffer) -> FrameManager {
-    let FrameSize { x, y } = frame_buffer.resolution;
     FrameManager {
       active_container: None,
       head:             None,
-      buffer:           Vec::with_capacity((x * y) as usize),
+      buffer:           FrameBuffer {
+        frame_buffer: {
+          let vec = vec![[0u8; 4]; frame_buffer.pixel_len()];
+          let (p, _, _) = vec.into_raw_parts();
+          p as *mut [u8; 4]
+        },
+        ..*frame_buffer
+      },
     }
   }
   pub fn add(&mut self, dir: Direction, color: PixelColor) {
@@ -137,17 +143,25 @@ impl FrameManager {
   }
 
   pub fn draw(&self, frame_buffer: &FrameBuffer) {
-    frame_buffer.write_rect(
+    self.buffer.write_rect(
       Vec2::<u32> { x: 0, y: 0 },
-      frame_buffer.resolution,
+      self.buffer.resolution,
       &PixelColor::from_hex(0x32a852),
       true,
     );
     if let Some(head) = &self.head {
       head.borrow().draw(
-        frame_buffer,
+        &self.buffer,
         FramePos { x: 0, y: 0 },
-        frame_buffer.resolution,
+        self.buffer.resolution,
+      );
+    }
+
+    unsafe {
+      core::ptr::copy(
+        self.buffer.frame_buffer,
+        frame_buffer.frame_buffer,
+        frame_buffer.pixel_len(),
       );
     }
   }
@@ -155,6 +169,5 @@ impl FrameManager {
   pub fn remove_all_frame(&mut self) {
     self.head = None;
     self.active_container = None;
-    self.buffer.clear();
   }
 }

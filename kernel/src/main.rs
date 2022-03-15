@@ -5,6 +5,7 @@
 #![allow(unused_variables)]
 #![feature(const_mut_refs)]
 #![feature(abi_x86_interrupt)]
+#![feature(vec_into_raw_parts)]
 #![feature(alloc_error_handler)]
 #![feature(associated_type_bounds)]
 

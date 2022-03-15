@@ -27,6 +27,9 @@ pub struct FrameBuffer {
 }
 
 impl FrameBuffer {
+  pub fn pixel_len(&self) -> usize {
+    (self.resolution.x * self.resolution.y) as usize
+  }
   pub fn write_pixel(&self, pos: Vec2<u32>, c: &PixelColor) {
     let p = (self.frame_buffer as u64 +
       4 * (pos.x as u32 + pos.y as u32 * self.resolution.x) as u64) as *mut [u8; 4];
@@ -94,7 +97,7 @@ impl FrameBuffer {
     let mut diff = Vec2::<u32> { x: 0, y: 0 };
     let two = Vec2::<u32> { x: 2, y: 2 };
     for _ in 0..border_size {
-      serial_print!("{} - {}, ", size, diff * two);
+      //serial_print!("{} - {}, ", size, diff * two);
       self.write_rect(begin + diff, size, border_color, false);
       diff.x += 1;
       diff.y += 1;
