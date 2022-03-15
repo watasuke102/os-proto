@@ -43,26 +43,47 @@ pub extern "sysv64" fn kernel_main(config: &mut FrameBuffer, memmap: &MemoryMap)
   interrupt::init();
 
   let mut frame_manager = FrameManager::new(config);
-  {
-    use Direction::*;
-    frame_manager.add(Right, PixelColor::from_hex(0x6134eb));
-    frame_manager.add(Right, PixelColor::from_hex(0x34a1eb));
-    frame_manager.add(Bottom, PixelColor::from_hex(0xde771d));
-    frame_manager.add(Right, PixelColor::from_hex(0xeb4034));
-    frame_manager.add(Bottom, PixelColor::from_hex(0x1d2ade));
-    frame_manager.add(Right, PixelColor::from_hex(0xde1d74));
-  }
   frame_manager.draw(config);
-
-  //x86_64::instructions::interrupts::int3();
-
   serial_println!("[Info] All done!");
+
+  let mut key_buffer = x86_64::instructions::port::PortReadOnly::<u8>::new(0x60);
+  let mut key_stat = x86_64::instructions::port::PortReadOnly::<u8>::new(0x64);
+
+  let mut pressed_before = false;
   loop {
-    /*
-    serial_print!(".");
-    for i in 0..40000_000 {}
-    x86_64::instructions::interrupts::int3();
-    */
-    hlt();
+    // pooling until input buffer is full (bit 0 is 1)
+    while (unsafe { key_stat.read() } & 1) != 1 {}
+
+    let x = unsafe { key_buffer.read() };
+    match x {
+      // j
+      0x24 => {
+        if !pressed_before {
+          pressed_before = true;
+          frame_manager.add(Direction::Bottom, PixelColor::from_hex(0xe8322c));
+          crate::memory::global_allocator::print_free_memory();
+          frame_manager.draw(config);
+        }
+      }
+      // l
+      0x26 => {
+        if !pressed_before {
+          pressed_before = true;
+          frame_manager.add(Direction::Right, PixelColor::from_hex(0x2c8ae8));
+          crate::memory::global_allocator::print_free_memory();
+          frame_manager.draw(config);
+        }
+      }
+      // c
+      0x2e => {
+        if !pressed_before {
+          pressed_before = true;
+          frame_manager.remove_all_frame();
+          frame_manager.draw(config);
+        }
+      }
+
+      _ => pressed_before = false,
+    }
   }
 }

@@ -1,5 +1,5 @@
 use alloc::{rc::Rc, vec, vec::Vec};
-use common::{frame_buffer::*, rect::Rect, serial_println, vec2::Vec2};
+use common::{frame_buffer::*, rect::Rect, serial_print, serial_println, vec2::Vec2};
 use core::cell::{Cell, Ref, RefCell};
 use kernel::Direction;
 use x86_64::structures::paging::frame;
@@ -17,7 +17,7 @@ pub struct Window {
 impl Frame for Window {
   fn draw(&self, buffer: &FrameBuffer, pos: FramePos, size: FrameSize) {
     let rect = Rect { begin: pos, size }.shrink(4);
-    serial_println!("draw at: {:?} | size: {:?}", pos, size);
+    serial_println!("draw at: {:<10} | size: {:<10}", pos, size);
     buffer.write_rect_with_border(
       rect.begin,
       rect.size,
@@ -150,5 +150,11 @@ impl FrameManager {
         frame_buffer.resolution,
       );
     }
+  }
+
+  pub fn remove_all_frame(&mut self) {
+    self.head = None;
+    self.active_container = None;
+    self.buffer.clear();
   }
 }
