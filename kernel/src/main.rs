@@ -61,8 +61,11 @@ pub extern "sysv64" fn kernel_main(config: &mut FrameBuffer, memmap: &MemoryMap)
     /*
     serial_print!(".");
     for i in 0..40000_000 {}
-    //x86_64::instructions::interrupts::int3();
+    x86_64::instructions::interrupts::int3();
     */
+    x86_64::instructions::interrupts::disable();
+    x86_64::instructions::interrupts::enable();
+    serial_println!("{:?}", x86_64::registers::rflags::read());
     hlt();
   }
 }

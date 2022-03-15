@@ -21,7 +21,10 @@ pub fn init() {
     IDT.breakpoint.set_handler_fn(handle_breakpoint);
     IDT.double_fault.set_handler_fn(handle_doublefault);
 
-    serial_println!("p: {}", handle_breakpoint as usize);
+    for i in 32..128usize {
+      IDT[i].set_handler_fn(handle_any);
+    }
+
     IDT[32].set_handler_fn(handle_timer);
     IDT[33].set_handler_fn(handle_keyboard);
     IDT[44].set_handler_fn(handle_mouse);
@@ -81,13 +84,17 @@ extern "x86-interrupt" fn handle_mouse(_: InterruptStackFrame) {
   serial_println!("  **Interrupt (mouse)");
 }
 extern "x86-interrupt" fn handle_keyboard(stack_frame: InterruptStackFrame) {
-  let key = unsafe { PortReadOnly::<u8>::new(0x60).read() };
-  serial_println!("  **Interrupt (keyboard {})", key);
-  let key = unsafe { PortReadOnly::<u8>::new(0x60).read() };
-  let key = unsafe { PortReadOnly::<u8>::new(0x60).read() };
-  let key = unsafe { PortReadOnly::<u8>::new(0x60).read() };
   unsafe {
+    serial_println!(
+      "  **Interrupt (keyboard: {}, {}, {})",
+      PortReadOnly::<u8>::new(0x60).read(),
+      PortReadOnly::<u8>::new(0x60).read(),
+      PortReadOnly::<u8>::new(0x60).read(),
+    );
     PICS.notify_end_of_interrupt(33);
+    PortWriteOnly::<u8>::new(0x20).write(0x61);
+    /*
+     */
     PortWriteOnly::<u8>::new(0x20).write(0x20);
     PortWriteOnly::<u8>::new(0xa0).write(0x20);
   }
