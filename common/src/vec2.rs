@@ -1,9 +1,16 @@
+use core::fmt;
+use core::fmt::{Display, Formatter};
 use core::ops::{Add, Mul, Sub};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Vec2<T> {
   pub x: T,
   pub y: T,
+}
+impl<T: Display> Display for Vec2<T> {
+  fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+    write!(f, "({}, {})", self.x, self.y)
+  }
 }
 
 impl<T: Add<Output = T>> Add for Vec2<T> {
