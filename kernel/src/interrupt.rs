@@ -1,5 +1,4 @@
 use common::serial_println;
-use pic8259::ChainedPics;
 use x86_64::{
   instructions::{
     interrupts,
@@ -7,8 +6,6 @@ use x86_64::{
   },
   structures::idt::{InterruptDescriptorTable, InterruptStackFrame},
 };
-
-static mut PICS: ChainedPics = unsafe { ChainedPics::new(32, 40) };
 
 static mut IDT: InterruptDescriptorTable = InterruptDescriptorTable::new();
 
@@ -18,6 +15,12 @@ pub fn init() {
   serial_println!("[Debug] initing interrupt...");
 
   unsafe {
+    // disable 8259
+    PortWriteOnly::<u8>::new(0x21).write(0xff);
+    PortWriteOnly::<u8>::new(0xa1).write(0xff);
+
+    *(0xfee0_00f0 as *mut u32) |= 0x100;
+
     IDT.breakpoint.set_handler_fn(handle_breakpoint);
     IDT.double_fault.set_handler_fn(handle_doublefault);
 
@@ -30,14 +33,12 @@ pub fn init() {
     IDT[44].set_handler_fn(handle_mouse);
     IDT.load();
     serial_println!("[Debug] IDT loaded");
-    PICS.initialize();
-    serial_println!("[Debug] PIC loaded");
     //for i in 0..20_000_000 {}
 
     // timer
     *(0xfee0_03e0 as *mut u32) = 0b1011;
     *(0xfee0_0320 as *mut u32) = (0b10 << 16) | 32;
-    *(0xfee0_0380 as *mut u32) = 0x3fff_ffff;
+    *(0xfee0_0380 as *mut u32) = 0x4fff_ffff;
 
     // keyboard
     while (keyboard_stat.read() & 0b0010) != 0 {}
@@ -50,9 +51,6 @@ pub fn init() {
     PortWriteOnly::<u8>::new(0x64).write(0xd4);
     while (keyboard_stat.read() & 0b0010) != 0 {}
     PortWriteOnly::<u8>::new(0x60).write(0xf4);
-
-    PortWriteOnly::<u8>::new(0x21).write(0xf8);
-    PortWriteOnly::<u8>::new(0xa1).write(0xef);
   }
   interrupts::enable();
   serial_println!("[Debug] Interrupt enabled");
@@ -79,9 +77,11 @@ extern "x86-interrupt" fn handle_timer(_: InterruptStackFrame) {
 }
 extern "x86-interrupt" fn handle_any(frame: InterruptStackFrame) {
   serial_println!("  **Interrupt (any) {:?}", frame);
+  end_interrupt();
 }
 extern "x86-interrupt" fn handle_mouse(_: InterruptStackFrame) {
   serial_println!("  **Interrupt (mouse)");
+  end_interrupt();
 }
 extern "x86-interrupt" fn handle_keyboard(stack_frame: InterruptStackFrame) {
   unsafe {
@@ -91,12 +91,10 @@ extern "x86-interrupt" fn handle_keyboard(stack_frame: InterruptStackFrame) {
       PortReadOnly::<u8>::new(0x60).read(),
       PortReadOnly::<u8>::new(0x60).read(),
     );
-    PICS.notify_end_of_interrupt(33);
-    PortWriteOnly::<u8>::new(0x20).write(0x61);
     /*
-     */
     PortWriteOnly::<u8>::new(0x20).write(0x20);
     PortWriteOnly::<u8>::new(0xa0).write(0x20);
+    */
   }
   end_interrupt();
 }

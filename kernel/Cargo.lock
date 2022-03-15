@@ -33,7 +33,6 @@ name = "kernel"
 version = "0.1.0"
 dependencies = [
  "common",
- "pic8259",
  "spin",
  "uart_16550",
  "uefi",
@@ -56,15 +55,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "51b9bbe6c47d51fc3e1a9b945965946b4c44142ab8792c50835a980d362c2710"
 dependencies = [
  "cfg-if",
-]
-
-[[package]]
-name = "pic8259"
-version = "0.10.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24ec21f514e2e16e94649f1d041ca4a7069b512c037ac156360652a775e6229d"
-dependencies = [
- "x86_64",
 ]
 
 [[package]]
