@@ -17,7 +17,6 @@ pub struct Window {
 impl Frame for Window {
   fn draw(&self, buffer: &FrameBuffer, pos: FramePos, size: FrameSize) {
     let rect = Rect { begin: pos, size }.shrink(4);
-    //serial_println!("draw at: {:<10} | size: {:<10}", pos, size);
     buffer.write_rect_with_border(
       rect.begin,
       rect.size,
@@ -61,10 +60,41 @@ impl FrameContainer {
     }
   }
 
-  fn push_window(&mut self, color: PixelColor) {
-    let win = Rc::new(RefCell::new(Window { color }));
-    self.list.push(win.clone());
-    self.active_window = self.list.len() - 1;
+  fn push(&mut self, dir: &Direction, win: Rc<RefCell<Window>>) {
+    let new_index = self.active_window as isize +
+      match dir {
+        Direction::Top | Direction::Left => -1,
+        Direction::Bottom | Direction::Right => 1,
+      };
+    let new_index = new_index.clamp(0, self.list.len() as isize) as usize;
+    self.list.insert(new_index, win.clone());
+    self.active_window = new_index;
+  }
+
+  /// add window to container and return added container when the container added newly
+  fn add_window(
+    &mut self,
+    dir: &Direction,
+    color: &PixelColor,
+  ) -> Option<Rc<RefCell<FrameContainer>>> {
+    let win = Rc::new(RefCell::new(Window { color: *color }));
+    if self.direction == *dir {
+      serial_println!("added (same_direction)");
+      self.push(dir, win.clone());
+      return None;
+    } else {
+      serial_println!("added (different_direction)");
+      // this is the reason why self.list is Rc<RefCell>
+      // although it was not borrowed mutably
+      let new_container = Rc::new(RefCell::new(FrameContainer {
+        list:          vec![self.list[self.active_window].clone()],
+        direction:     *dir,
+        active_window: 0,
+      }));
+      self.list[self.active_window] = new_container.clone();
+      new_container.borrow_mut().push(dir, win.clone());
+      return Some(new_container);
+    }
   }
 }
 impl Frame for FrameContainer {
@@ -111,23 +141,10 @@ impl FrameManager {
     let new_active_container: Rc<RefCell<FrameContainer>>;
 
     if let Some(container) = &self.active_container {
-      let mut container = container.borrow_mut();
-      if container.direction == dir {
-        serial_println!("added (same_direction)");
-        container.push_window(color);
-        return;
+      if let Some(new_container) = container.borrow_mut().add_window(&dir, &color) {
+        new_active_container = new_container;
       } else {
-        let active_index = container.active_window;
-        serial_println!("added (different_direction)");
-        new_active_container = Rc::new(RefCell::new(FrameContainer {
-          list:          vec![
-            container.list[active_index].clone(),
-            Rc::new(RefCell::new(Window { color })),
-          ],
-          direction:     dir,
-          active_window: 1,
-        }));
-        container.list[active_index] = new_active_container.clone();
+        return;
       }
     } else {
       serial_println!("added (container was empty)");

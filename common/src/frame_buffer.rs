@@ -1,6 +1,7 @@
-use crate::{serial_print, vec2::Vec2};
+use crate::vec2::Vec2;
 use uefi::proto::console::gop::PixelFormat;
 
+#[derive(Clone, Copy)]
 pub struct PixelColor {
   r: u8,
   g: u8,
@@ -97,7 +98,6 @@ impl FrameBuffer {
     let mut diff = Vec2::<u32> { x: 0, y: 0 };
     let two = Vec2::<u32> { x: 2, y: 2 };
     for _ in 0..border_size {
-      //serial_print!("{} - {}, ", size, diff * two);
       self.write_rect(begin + diff, size, border_color, false);
       diff.x += 1;
       diff.y += 1;
