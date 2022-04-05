@@ -109,10 +109,13 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
     list: [MemoryDescriptor::default(); MEMORYMAP_LIST_LEN],
     len:  0,
   };
-  let mut buf = [0 as u8; 1024 * 4];
+  let mut buf = [0 as u8; 1024 * 8];
   println!("[Info] Exiting boot services");
   let (memmap_key, memmap_iter) = table.exit_boot_services(handle, &mut buf).unwrap_success();
-  serial_println!("[Debug] end of boot services memmap: {}", memmap_iter.len());
+  serial_println!(
+    "[Debug] end of boot services (memmap: {})",
+    memmap_iter.len()
+  );
 
   for desc in memmap_iter {
     if is_available_memory(desc.ty) {

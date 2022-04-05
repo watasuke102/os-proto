@@ -1,6 +1,6 @@
 use uefi::table::boot::{MemoryDescriptor, MemoryType};
 
-pub const MEMORYMAP_LIST_LEN: usize = 32;
+pub const MEMORYMAP_LIST_LEN: usize = 128;
 
 pub struct MemoryMap {
   pub list: [MemoryDescriptor; MEMORYMAP_LIST_LEN],
@@ -11,5 +11,5 @@ pub struct MemoryMap {
 pub fn is_available_memory(typ: MemoryType) -> bool {
   typ == MemoryType::BOOT_SERVICES_CODE ||
   typ == MemoryType::BOOT_SERVICES_DATA ||
-  typ == MemoryType::CONVENTIONAL      
+  typ == MemoryType::CONVENTIONAL
 }
