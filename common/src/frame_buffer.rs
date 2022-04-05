@@ -98,7 +98,7 @@ impl FrameBuffer {
     let mut diff = Vec2::<u32> { x: 0, y: 0 };
     let two = Vec2::<u32> { x: 2, y: 2 };
     for _ in 0..border_size {
-      self.write_rect(begin + diff, size, border_color, false);
+      self.write_rect(begin + diff, size - diff * two, border_color, false);
       diff.x += 1;
       diff.y += 1;
     }
