@@ -9,7 +9,6 @@
 extern crate alloc;
 use alloc::{vec, vec::Vec};
 use common::{
-  frame_buffer::*,
   memory_map::{is_available_memory, MemoryMap, MEMORYMAP_LIST_LEN},
   serial_print, serial_println,
   vec2::Vec2,
@@ -49,25 +48,6 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
   table.stdout().clear().unwrap_success();
   uefi_services::init(&mut table).unwrap_success();
   println!("[Log] Started boot loader");
-
-  // get GOP
-  println!("[Log] Loading GOP");
-  let gop = unsafe {
-    &mut *(table
-      .boot_services()
-      .locate_protocol::<GraphicsOutput>()
-      .unwrap_success()
-      .get())
-  };
-  let frame_buffer = FrameBuffer {
-    frame_buffer: gop.frame_buffer().as_mut_ptr() as *mut [u8; 4],
-    stride:       gop.current_mode_info().stride(),
-    resolution:   Vec2::<u32> {
-      x: gop.current_mode_info().resolution().0 as u32,
-      y: gop.current_mode_info().resolution().1 as u32,
-    },
-    pixel_format: gop.current_mode_info().pixel_format(),
-  };
 
   // open kernel file
   println!("[Log] Loading kernel");
@@ -124,14 +104,13 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
     }
   }
 
-  let entry: extern "sysv64" fn(&FrameBuffer, &MemoryMap) =
-    unsafe { core::mem::transmute(kernel_entry) };
+  let entry: extern "sysv64" fn(&MemoryMap) = unsafe { core::mem::transmute(kernel_entry) };
   serial_println!(
     "[Info] Let's go! (entrypoint: 0x{:x} | 0x{:x})",
     kernel_entry,
     entry as u64
   );
-  entry(&frame_buffer, &memmap);
+  entry(&memmap);
 
   loop {
     unsafe {
