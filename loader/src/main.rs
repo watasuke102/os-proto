@@ -21,8 +21,10 @@ use uefi::{
     console::gop::GraphicsOutput,
     media::file::{File, FileAttribute, FileMode, FileType::*, RegularFile},
   },
-  table::boot::{AllocateType, MemoryDescriptor, MemoryType},
-  ResultExt,
+  table::boot::{
+    self, AllocateType, MemoryDescriptor, MemoryType, OpenProtocolAttributes, OpenProtocolParams,
+  },
+  CStr16, ResultExt,
 };
 
 #[derive(Debug)]
@@ -45,15 +47,16 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
     ($($arg:tt)*) => { print!("{}\n", format_args!($($arg)*)) };
   }
 
-  table.stdout().clear().unwrap_success();
-  uefi_services::init(&mut table).unwrap_success();
+  table.stdout().clear().unwrap();
+  uefi_services::init(&mut table).unwrap();
   println!("[Log] Started boot loader");
 
   // open kernel file
   println!("[Log] Loading kernel");
-  let (mut kernel_file, kernel_size) = open_file(table.boot_services(), &handle, "kernel.elf");
+  let (mut kernel_file, kernel_size) =
+    open_file(table.boot_services(), &handle, cstr16!("kernel.elf"));
   let mut loader_pool = vec![0; kernel_size as usize];
-  kernel_file.read(&mut loader_pool).unwrap_success();
+  kernel_file.read(&mut loader_pool).unwrap();
   // calculate LOAD segment range
   let elf = Elf::from_bytes(&loader_pool).unwrap();
   let kernel_entry = elf.entry_point();
@@ -91,7 +94,7 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
   };
   let mut buf = [0 as u8; 1024 * 8];
   println!("[Info] Exiting boot services");
-  let (memmap_key, memmap_iter) = table.exit_boot_services(handle, &mut buf).unwrap_success();
+  let (memmap_key, memmap_iter) = table.exit_boot_services(handle, &mut buf).unwrap();
   serial_println!(
     "[Debug] end of boot services (memmap: {})",
     memmap_iter.len()
@@ -121,25 +124,21 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
 
 /// Open file and return (file: RegularFile, size: u64)
 /// Cause panic when try to open directory (specify directory name)
-fn open_file(boot_services: &BootServices, handle: &Handle, name: &str) -> (RegularFile, u64) {
+fn open_file(boot_services: &BootServices, handle: &Handle, name: &CStr16) -> (RegularFile, u64) {
   // open root dir
-  let mut dir = unsafe {
-    &mut *boot_services
-      .get_image_file_system(*handle)
-      .unwrap_success()
-      .interface
-      .get()
-  }
-  .open_volume()
-  .unwrap_success();
+  let mut dir = boot_services
+    .get_image_file_system(*handle)
+    .unwrap()
+    .open_volume()
+    .unwrap();
 
   // find file and check file size
   const BUFFER_SIZE: usize = 128;
   let mut buffer: [u8; BUFFER_SIZE] = [0; BUFFER_SIZE];
   let size = loop {
-    match dir.read_entry(&mut buffer).unwrap_success() {
+    match dir.read_entry(&mut buffer).unwrap() {
       Some(file) => {
-        if file.file_name().as_string() == name {
+        if file.file_name() == name {
           break file.file_size();
         }
       }
@@ -149,10 +148,14 @@ fn open_file(boot_services: &BootServices, handle: &Handle, name: &str) -> (Regu
   // load kernel to pool
   // FileAttribute is invalid in Read-Only open like this
   match dir
-    .open("kernel.elf", FileMode::Read, FileAttribute::READ_ONLY)
-    .unwrap_success()
+    .open(
+      cstr16!("kernel.elf"),
+      FileMode::Read,
+      FileAttribute::READ_ONLY,
+    )
+    .unwrap()
     .into_type()
-    .unwrap_success()
+    .unwrap()
   {
     Regular(file) => (file, size),
     _ => panic!("Invalid file type"),

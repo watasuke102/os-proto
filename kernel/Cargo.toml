@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 common = {path = "../common"}
-x86_64 = "0.14.8"
-spin = "0.9.2"
-uart_16550 = "0.2.16"
-uefi = "0.14.0"
+x86_64 = "0.14.10"
+spin = "0.9.4"
+uart_16550 = "0.2.18"
+uefi = "0.18.0"

@@ -6,5 +6,5 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-uefi = "0.14.0"
-uart_16550 = "0.2.16"
+uefi = "0.18.0"
+uart_16550 = "0.2.18"
