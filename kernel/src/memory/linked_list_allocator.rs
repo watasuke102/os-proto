@@ -28,6 +28,10 @@ impl LinkedListAllocator {
   }
 
   pub unsafe fn add_free_region(&mut self, addr: usize, size: usize) {
+    if addr == 0 {
+      return;
+    }
+
     assert_eq!(
       align_up(addr as u64, align_of::<ListNode>() as u64) as u64,
       addr as u64
