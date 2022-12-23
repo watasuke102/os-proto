@@ -14,8 +14,8 @@ mod interrupt;
 mod linked_list;
 mod memory;
 
-use alloc::{alloc::Layout, vec};
-use common::{memory_map::MemoryMap, serial_print, serial_println};
+use alloc::{alloc::Layout, string::String, vec};
+use common::{memory_map::MemoryMap, serial, serial_print, serial_println};
 use core::{arch::asm, panic::PanicInfo};
 use kernel::*;
 use memory::*;
@@ -41,6 +41,27 @@ pub extern "sysv64" fn kernel_main(memmap: &MemoryMap) -> ! {
   global_allocator::init(&memmap);
   interrupt::init();
 
+  let mut command = String::new();
   serial_println!("Start loop");
-  loop {}
+  loop {
+    serial_print!(">> ");
+    loop {
+      let c = serial::read() as char;
+      if c >= ' ' && c <= '~' {
+        serial_print!("{}", c);
+        command.push(c);
+      } else if c as u8 == 13 {
+        // Enter
+        break;
+      } else if c as u8 == 127 {
+        // BS
+        serial::print_raw(8);
+        serial::print_raw(' ' as u8);
+        serial::print_raw(8);
+        command.pop();
+      }
+    }
+    serial_println!("\nYou entered `{}`", command);
+    command.clear();
+  }
 }

@@ -1,6 +1,19 @@
+use uart_16550::SerialPort;
+
+pub fn read() -> u8 {
+  let mut serial_port = unsafe { SerialPort::new(0x3f8) };
+  serial_port.init();
+  serial_port.receive()
+}
+
+pub fn print_raw(value: u8) {
+  let mut serial_port = unsafe { SerialPort::new(0x3f8) };
+  serial_port.init();
+  serial_port.send_raw(value);
+}
+
 pub fn print(args: core::fmt::Arguments) {
   use core::fmt::Write;
-  use uart_16550::SerialPort;
 
   let mut serial_port = unsafe { SerialPort::new(0x3f8) };
   serial_port.init();
