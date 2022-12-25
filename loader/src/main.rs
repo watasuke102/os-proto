@@ -86,6 +86,12 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
     }
   }
 
+  // open initfs.img
+  println!("[Log] Loading initial fs");
+  let (mut initfs, initfs_size) = open_file(table.boot_services(), &handle, cstr16!("initfs.img"));
+  let mut initfs_pool = vec![0; initfs_size as usize];
+  initfs.read(&mut initfs_pool).unwrap();
+
   // get memmap
   let memmap_size = table.boot_services().memory_map_size().map_size;
   let mut memmap = MemoryMap {
@@ -107,13 +113,14 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
     }
   }
 
-  let entry: extern "sysv64" fn(&MemoryMap) = unsafe { core::mem::transmute(kernel_entry) };
+  let entry: extern "sysv64" fn(&MemoryMap, &Vec<u8>) =
+    unsafe { core::mem::transmute(kernel_entry) };
   serial_println!(
     "[Info] Let's go! (entrypoint: 0x{:x} | 0x{:x})",
     kernel_entry,
     entry as u64
   );
-  entry(&memmap);
+  entry(&memmap, &initfs_pool);
 
   loop {
     unsafe {
@@ -142,17 +149,13 @@ fn open_file(boot_services: &BootServices, handle: &Handle, name: &CStr16) -> (R
           break file.file_size();
         }
       }
-      None => panic!("`kernel.elf` is not found"),
+      None => panic!("`{}` is not found", name),
     }
   };
   // load kernel to pool
   // FileAttribute is invalid in Read-Only open like this
   match dir
-    .open(
-      cstr16!("kernel.elf"),
-      FileMode::Read,
-      FileAttribute::READ_ONLY,
-    )
+    .open(name, FileMode::Read, FileAttribute::READ_ONLY)
     .unwrap()
     .into_type()
     .unwrap()

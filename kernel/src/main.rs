@@ -14,12 +14,18 @@ mod interrupt;
 mod linked_list;
 mod memory;
 
-use alloc::{alloc::Layout, string::String, vec};
+use alloc::{
+  alloc::Layout,
+  string::String,
+  vec::{self, Vec},
+};
 use common::{memory_map::MemoryMap, serial, serial_print, serial_println};
 use core::{arch::asm, panic::PanicInfo};
 use kernel::*;
 use memory::*;
 use x86_64::instructions::hlt;
+
+use crate::interrupt::init;
 
 #[panic_handler]
 fn handle_panic(info: &PanicInfo) -> ! {
@@ -34,12 +40,17 @@ fn handle_alloc_error(layout: Layout) -> ! {
 }
 
 #[no_mangle]
-pub extern "sysv64" fn kernel_main(memmap: &MemoryMap) -> ! {
+pub extern "sysv64" fn kernel_main(memmap: &MemoryMap, initfs_img: &Vec<u8>) -> ! {
   serial_println!("Welcome to kernel!");
   segment::init();
   paging::init();
   global_allocator::init(&memmap);
   interrupt::init();
+
+  for i in 0..32 {
+    serial_print!("{:02x} ", initfs_img[i]);
+  }
+  serial_println!();
 
   let mut command = String::new();
   serial_println!("Start loop");
