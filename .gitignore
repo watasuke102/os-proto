@@ -1,4 +1,5 @@
 /build
+/initfs
 OVMF_*.fd
 
 target/

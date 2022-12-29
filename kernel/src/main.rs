@@ -10,6 +10,7 @@
 #![feature(associated_type_bounds)]
 
 extern crate alloc;
+mod fat;
 mod interrupt;
 mod linked_list;
 mod memory;
@@ -47,10 +48,7 @@ pub extern "sysv64" fn kernel_main(memmap: &MemoryMap, initfs_img: &Vec<u8>) -> 
   global_allocator::init(&memmap);
   interrupt::init();
 
-  for i in 0..32 {
-    serial_print!("{:02x} ", initfs_img[i]);
-  }
-  serial_println!();
+  let initfs = fat::Fat::new(initfs_img.to_vec());
 
   let mut command = String::new();
   serial_println!("Start loop");
@@ -72,7 +70,16 @@ pub extern "sysv64" fn kernel_main(memmap: &MemoryMap, initfs_img: &Vec<u8>) -> 
         command.pop();
       }
     }
-    serial_println!("\nYou entered `{}`", command);
+    serial_println!();
+
+    match command.as_str() {
+      "ls" => {
+        for item in &initfs.files {
+          serial_println!("[{:02x}] {}", item.attrib, item.name);
+        }
+      }
+      _ => serial_println!("Unknown command"),
+    }
     command.clear();
   }
 }
