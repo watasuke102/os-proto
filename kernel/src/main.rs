@@ -72,10 +72,32 @@ pub extern "sysv64" fn kernel_main(memmap: &MemoryMap, initfs_img: &Vec<u8>) -> 
     }
     serial_println!();
 
-    match command.as_str() {
+    let commands: Vec<&str> = command.split(' ').collect();
+
+    match commands[0] {
       "ls" => {
         for item in &initfs.files {
-          serial_println!("[{:02x}] {}", item.attrib, item.name);
+          if commands.len() >= 2 && commands[1] == "-l" {
+            serial_println!("{} [{:02x}, {}]", item.name, item.attrib, item.size);
+          } else {
+            serial_print!("{} ", item.name);
+          }
+        }
+        serial_println!();
+      }
+      "cat" => {
+        if commands.len() < 2 {
+          serial_println!("Error: please specify file name");
+        } else {
+          for (i, item) in initfs.files.iter().enumerate() {
+            if item.name.as_str() != commands[1] {
+              continue;
+            }
+            let data = initfs.data(i);
+            for byte in data {
+              serial_print!("{}", *byte as char);
+            }
+          }
         }
       }
       _ => serial_println!("Unknown command"),
