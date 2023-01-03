@@ -84,12 +84,11 @@ pub extern "sysv64" fn kernel_main(memmap: &MemoryMap, initfs_img: &Vec<u8>) -> 
       "ls" => {
         for item in &initfs.files {
           if commands.len() >= 2 && commands[1] == "-l" {
-            serial_println!("{} [{:02x}, {}]", item.name, item.attrib, item.size);
+            serial_println!("[0x{:02x}, {:4}] {}", item.attrib, item.size, item.name);
           } else {
             serial_print!("{} ", item.name);
           }
         }
-        serial_println!();
       }
       "cat" => {
         if commands.len() < 2 {
@@ -109,5 +108,6 @@ pub extern "sysv64" fn kernel_main(memmap: &MemoryMap, initfs_img: &Vec<u8>) -> 
       _ => serial_println!("Unknown command"),
     }
     command.clear();
+    serial_println!();
   }
 }

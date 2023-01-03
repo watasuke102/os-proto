@@ -1,6 +1,6 @@
 use core::str::FromStr;
 
-use alloc::{borrow::ToOwned, string::String, vec::Vec};
+use alloc::{borrow::ToOwned, format, string::String, vec::Vec};
 use common::{serial_print, serial_println};
 
 #[derive(Debug)]
@@ -19,6 +19,31 @@ pub struct Fat {
   bytes_per_sector:     u16,
   data:                 Vec<u8>,
   pub files:            Vec<File>,
+}
+
+fn long_name_from_entry(data: &[u8]) -> String {
+  let mut str_data: Vec<u16> = Vec::new();
+  let mut c = 0u16;
+  let mut f = false;
+
+  for (i, e) in data.iter().enumerate() {
+    match i {
+      0 | 11 | 12 | 13 | 26 | 27 => continue,
+      _ => (),
+    }
+
+    c |= (*e as u16) << (8 * f as u8);
+    if f {
+      if c == 0 {
+        break;
+      }
+      str_data.push(c);
+      c = 0;
+    }
+    f = !f;
+  }
+
+  String::from_utf16_lossy(&str_data)
 }
 
 impl Fat {
@@ -47,51 +72,51 @@ impl Fat {
     let rootdir_offset =
       fat.addr_from_cluster(u32::from_le_bytes(fat.data[44..48].try_into().unwrap()));
 
+    let mut file_name = String::new();
+
     for i in 0.. {
       let begin_addr = (rootdir_offset + i * 32) as usize;
-      match fat.data[begin_addr] {
+      let data: &[u8] = &fat.data[begin_addr..begin_addr + 32];
+      match data[0] {
         0x00 => break,
         // TODO: handle 0x05
         0xe5 | 0x05 => continue,
         _ => (),
       }
 
-      let file_attrib = fat.data[begin_addr + 11];
+      let file_attrib = data[11];
       match file_attrib {
-        0x08 | 0x10 | 0x0f => continue,
+        0x08 | 0x10 => continue,
+        0x0f => {
+          file_name = format!("{}{}", long_name_from_entry(data), file_name);
+          continue;
+        }
         _ => (),
       }
 
-      let mut file = File {
-        name:       String::new(),
-        attrib:     file_attrib,
-        size:       u32::from_ne_bytes(
-          fat.data[begin_addr + 28..begin_addr + 28 + 4]
-            .try_into()
-            .unwrap(),
-        ) as usize,
-        begin_addr: fat.addr_from_cluster(u32::from_le_bytes([
-          fat.data[begin_addr + 26],
-          fat.data[begin_addr + 27],
-          fat.data[begin_addr + 20],
-          fat.data[begin_addr + 21],
-        ])),
-      };
-      // name
-      for j in 0..11 {
-        let c = fat.data[begin_addr + j];
-        if c != 0x20 {
-          file.name.push(c as char);
+      if file_name.len() == 0 {
+        for j in 0..11 {
+          let c = data[j];
+          if c != 0x20 {
+            file_name.push(c as char);
+          }
+          if j == 7 {
+            file_name.push('.');
+          }
         }
-        if j == 7 {
-          file.name.push('.');
+        if file_name.ends_with(".") {
+          file_name.pop();
         }
-      }
-      if file.name.ends_with(".") {
-        file.name.pop();
       }
 
-      fat.files.push(file);
+      fat.files.push(File {
+        name:       String::clone(&file_name),
+        attrib:     file_attrib,
+        size:       u32::from_ne_bytes(data[28..32].try_into().unwrap()) as usize,
+        begin_addr: fat
+          .addr_from_cluster(u32::from_le_bytes([data[26], data[27], data[20], data[21]])),
+      });
+      file_name.clear();
     }
 
     fat
