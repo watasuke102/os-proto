@@ -7,4 +7,4 @@ edition = "2021"
 common = {path = "../common"}
 uefi = {version = "0.18.0", features = ["exts"]}
 uefi-services = "0.15.0"
-elf_rs = "0.2.0"
+elf_rs = "0.3.0"
