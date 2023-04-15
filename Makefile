@@ -9,7 +9,7 @@ KERNEL_SRC  := $(COMMON_SRC) $(shell find kernel -name "*.rs")
 
 .PHONY: all r mount umount kill loader kernel
 
-all: $(BUILD_DIR)/disk.img
+all: $(BUILD_DIR)/image.img
 	make r
 
 b: loader kernel
@@ -24,23 +24,23 @@ r: $(BUILD_DIR)/image.img
 # -device nec-usb-xhci,id=xhci -device usb-kbd -device usb-mouse \
 
 mount:
-	sudo mount -o loop $(BUILD_DIR)/disk.img $(BUILD_DIR)/mnt
+	sudo mount -o loop $(BUILD_DIR)/image.img $(BUILD_DIR)/mnt
 umount:
 	sudo umount $(BUILD_DIR)/mnt
 kill:
 	killall qemu-system-x86_64 -s SIGKILL
 
-loader: $(BUILD_DIR)/loader.efi
+loader: $(BUILD_DIR) $(BUILD_DIR)/loader.efi
 $(BUILD_DIR)/loader.efi: $(LOADER_SRC)
 	cd loader && cargo build
 	cp loader/target/x86_64-unknown-uefi/debug/loader.efi $(BUILD_DIR)/loader.efi
 
-kernel: $(BUILD_DIR)/kernel.elf
+kernel: $(BUILD_DIR) $(BUILD_DIR)/kernel.elf
 $(BUILD_DIR)/kernel.elf: $(KERNEL_SRC)
 	cd kernel && cargo build
 	cp kernel/target/x86_64-unknown-os/debug/kernel $(BUILD_DIR)/kernel.elf
 
-$(BUILD_DIR)/image.img: $(BUILD_DIR)/kernel.elf $(BUILD_DIR)/loader.efi $(BUILD_DIR)/initfs.img
+$(BUILD_DIR)/image.img: $(BUILD_DIR) $(MOUNT_DIR) $(BUILD_DIR)/kernel.elf $(BUILD_DIR)/loader.efi $(BUILD_DIR)/initfs.img
 	qemu-img create -f raw $@ 128M
 	mkfs.fat $@
 	sudo mount -o loop $@ $(MOUNT_DIR)
@@ -50,9 +50,15 @@ $(BUILD_DIR)/image.img: $(BUILD_DIR)/kernel.elf $(BUILD_DIR)/loader.efi $(BUILD_
 	sudo cp $(BUILD_DIR)/initfs.img $(MOUNT_DIR)
 	sudo umount $(MOUNT_DIR)
 
-$(BUILD_DIR)/initfs.img: $(INITFS_ITEM)
+$(BUILD_DIR)/initfs.img: $(BUILD_DIR) $(MOUNT_DIR) $(INITFS_ITEM)
 	qemu-img create -f raw $@ 8M
 	mkfs.fat -n 'INITFS' -s2 -f2 -R32 -F32 $@
 	sudo mount -o loop $@ $(MOUNT_DIR)
 	sudo cp initfs/* $(MOUNT_DIR)
 	sudo umount $(MOUNT_DIR)
+
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
+
+$(MOUNT_DIR):
+	mkdir -p $(MOUNT_DIR)
