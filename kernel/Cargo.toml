@@ -8,6 +8,6 @@ edition = "2021"
 [dependencies]
 common = {path = "../common"}
 x86_64 = "0.14.10"
-spin = "0.9.4"
+spin = "0.9.8"
 uart_16550 = "0.2.18"
 uefi = "0.18.0"
