@@ -1,5 +1,6 @@
 /build
 /initfs
 OVMF_*.fd
+.gdb_history
 
 target/
