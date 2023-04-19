@@ -135,7 +135,7 @@ pub extern "sysv64" fn kernel_main(memmap: &MemoryMap, initfs_img: &Vec<u8>) -> 
               serial_println!("Error: file '{}' is not a ELF file", item.name);
               break;
             };
-            let mut entry_addr = initfs.item_addr(i) as u64 + elf.entry_point();
+            let mut entry_addr = initfs.item_addr(i) as u64;
 
             // FIXME: handle LOAD segment properly
             for section in elf.section_header_iter() {
