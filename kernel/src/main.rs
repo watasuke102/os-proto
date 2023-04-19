@@ -131,34 +131,36 @@ pub extern "sysv64" fn kernel_main(memmap: &MemoryMap, initfs_img: &Vec<u8>) -> 
               continue;
             }
             let file_data = initfs.data(i);
-            if let Ok(elf) = Elf::from_bytes(file_data) {
-              let mut entry_addr = initfs.item_addr(i) as u64 + elf.entry_point();
+            let Ok(elf) = Elf::from_bytes(file_data) else {
+              serial_println!("Error: file '{}' is not a ELF file", item.name);
+              break;
+            };
+            let mut entry_addr = initfs.item_addr(i) as u64 + elf.entry_point();
 
-              // FIXME: handle LOAD segment properly
-              for section in elf.section_header_iter() {
-                let section_name = section
-                  .section_name()
-                  .unwrap_or(&[])
-                  .iter()
-                  .map(|&c| c as char)
-                  .collect::<String>();
-                if section_name == ".text" {
-                  entry_addr += section.offset();
-                  break;
-                }
+            // FIXME: handle LOAD segment properly
+            for section in elf.section_header_iter() {
+              let section_name = section
+                .section_name()
+                .unwrap_or(&[])
+                .iter()
+                .map(|&c| c as char)
+                .collect::<String>();
+              if section_name == ".text" {
+                entry_addr += section.offset();
+                break;
               }
-
-              let ret: u64;
-              unsafe {
-                asm!(
-                  "call {}",
-                  "mov  {}, rdi",
-                  in(reg) entry_addr,
-                  out(reg) ret,
-                );
-              }
-              serial_println!("Exit: {}", ret);
             }
+
+            let ret: u64;
+            unsafe {
+              asm!(
+                "call {}",
+                "mov  {}, rdi",
+                in(reg) entry_addr,
+                out(reg) ret,
+              );
+            }
+            serial_println!("Exit: {}", ret);
           }
         }
       }
