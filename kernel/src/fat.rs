@@ -5,10 +5,10 @@ use common::{serial_print, serial_println};
 
 #[derive(Debug)]
 pub struct File {
-  pub name:   String,
-  pub size:   usize,
-  pub attrib: u8,
-  begin_addr: usize,
+  pub name:       String,
+  pub size:       usize,
+  pub attrib:     u8,
+  pub begin_addr: usize,
 }
 
 pub struct Fat {
@@ -125,5 +125,10 @@ impl Fat {
   pub fn data(&self, index: usize) -> &[u8] {
     let file = &self.files[index];
     &self.data[file.begin_addr..file.begin_addr + file.size]
+  }
+
+  pub fn item_addr(&self, index: usize) -> *const u64 {
+    let file = &self.files[index];
+    (self.data.as_ptr() as usize + file.begin_addr) as *const u64
   }
 }

@@ -21,9 +21,11 @@ use alloc::{
   vec::{self, Vec},
 };
 use common::{memory_map::MemoryMap, serial, serial_print, serial_println};
-use core::{arch::asm, panic::PanicInfo};
+use core::{arch::asm, mem::transmute, panic::PanicInfo};
+use elf_rs::{Elf, ElfFile, ProgramType};
 use kernel::*;
 use memory::*;
+use uefi::proto::media::file;
 use x86_64::instructions::hlt;
 
 use crate::interrupt::init;
@@ -101,6 +103,61 @@ pub extern "sysv64" fn kernel_main(memmap: &MemoryMap, initfs_img: &Vec<u8>) -> 
             let data = initfs.data(i);
             for byte in data {
               serial_print!("{}", *byte as char);
+            }
+          }
+        }
+      }
+      "dump" => {
+        if commands.len() < 2 {
+          serial_println!("Error: please specify file name");
+        } else {
+          for (i, item) in initfs.files.iter().enumerate() {
+            if item.name.as_str() != commands[1] {
+              continue;
+            }
+            let data = initfs.data(i);
+            for byte in data {
+              serial_print!("{:02x} ", *byte);
+            }
+          }
+        }
+      }
+      "exec" => {
+        if commands.len() < 2 {
+          serial_println!("Error: please specify file name");
+        } else {
+          for (i, item) in initfs.files.iter().enumerate() {
+            if item.name.as_str() != commands[1] {
+              continue;
+            }
+            let file_data = initfs.data(i);
+            if let Ok(elf) = Elf::from_bytes(file_data) {
+              let mut entry_addr = initfs.item_addr(i) as u64 + elf.entry_point();
+
+              // FIXME: handle LOAD segment properly
+              for section in elf.section_header_iter() {
+                let section_name = section
+                  .section_name()
+                  .unwrap_or(&[])
+                  .iter()
+                  .map(|&c| c as char)
+                  .collect::<String>();
+                if section_name == ".text" {
+                  entry_addr += section.offset();
+                  break;
+                }
+              }
+
+              let ret: u64;
+              unsafe {
+                asm!(
+                  "call {}",
+                  "mov  {}, rdi",
+                  in(reg) entry_addr,
+                  out(reg) ret,
+                );
+              }
+              serial_println!("Exit: {}", ret);
             }
           }
         }

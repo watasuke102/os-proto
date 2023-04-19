@@ -7,7 +7,7 @@ COMMON_SRC  := $(shell find common -name "*.rs")
 LOADER_SRC  := $(COMMON_SRC) $(shell find loader -name "*.rs")
 KERNEL_SRC  := $(COMMON_SRC) $(shell find kernel -name "*.rs")
 
-.PHONY: all r mount umount kill loader kernel
+.PHONY: all r mount umount kill apps loader kernel
 
 all: $(BUILD_DIR)/image.img
 	make r
@@ -30,6 +30,9 @@ umount:
 kill:
 	killall qemu-system-x86_64 -s SIGKILL
 
+apps:
+	cd apps && make
+
 loader: $(BUILD_DIR) $(BUILD_DIR)/loader.efi
 $(BUILD_DIR)/loader.efi: $(LOADER_SRC)
 	cd loader && cargo build
@@ -50,7 +53,7 @@ $(BUILD_DIR)/image.img: $(BUILD_DIR) $(MOUNT_DIR) $(BUILD_DIR)/kernel.elf $(BUIL
 	sudo cp $(BUILD_DIR)/initfs.img $(MOUNT_DIR)
 	sudo umount $(MOUNT_DIR)
 
-$(BUILD_DIR)/initfs.img: $(BUILD_DIR) $(MOUNT_DIR) $(INITFS_ITEM)
+$(BUILD_DIR)/initfs.img: $(BUILD_DIR) $(MOUNT_DIR) $(INITFS_ITEM) apps
 	qemu-img create -f raw $@ 8M
 	mkfs.fat -n 'INITFS' -s2 -f2 -R32 -F32 $@
 	sudo mount -o loop $@ $(MOUNT_DIR)
