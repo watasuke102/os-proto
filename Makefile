@@ -15,7 +15,7 @@ all: $(BUILD_DIR)/image.img
 b: loader kernel
 r: $(BUILD_DIR)/image.img
 	@echo -e "\e[42m>> Starting... \e[m"
-	@qemu-system-x86_64 -s -nographic -m 1G \
+	@qemu-system-x86_64 -s -nographic -serial mon:stdio -m 1G \
 		-drive if=pflash,format=raw,readonly=on,file=OVMF_CODE.fd \
 		-drive if=pflash,format=raw,file=OVMF_VARS.fd \
 		-drive format=raw,file=$(BUILD_DIR)/image.img \
