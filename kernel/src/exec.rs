@@ -9,11 +9,6 @@ pub fn execute_elf(data: &[u8], mut entry_addr: u64) {
     return;
   };
 
-  if elf.elf_header().elftype() != ElfType::ET_EXEC {
-    serial_println!("Error: invalid ELF type ({:?})", elf.elf_header().elftype());
-    return;
-  }
-
   // FIXME: handle LOAD segment properly
   for section in elf.section_header_iter() {
     let section_name = section
