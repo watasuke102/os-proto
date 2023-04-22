@@ -22,7 +22,7 @@ use alloc::{
 };
 use common::{memory_map::MemoryMap, serial, serial_print, serial_println};
 use core::{arch::asm, mem::transmute, panic::PanicInfo};
-use elf_rs::{Elf, ElfFile, ProgramType};
+use elf_rs::{Elf, ElfFile, ElfType, ProgramType};
 use kernel::*;
 use memory::*;
 use uefi::proto::media::file;
@@ -76,7 +76,7 @@ pub extern "sysv64" fn kernel_main(memmap: &MemoryMap, initfs_img: &Vec<u8>) -> 
 
     let commands: Vec<&str> = command.split(' ').collect();
 
-    match commands[0] {
+    (|| match commands[0] {
       "echo" => {
         for arg in commands.iter().skip(1) {
           serial_print!("{} ", arg);
@@ -96,14 +96,13 @@ pub extern "sysv64" fn kernel_main(memmap: &MemoryMap, initfs_img: &Vec<u8>) -> 
         if commands.len() < 2 {
           serial_println!("Error: please specify file name");
         } else {
-          for (i, item) in initfs.files.iter().enumerate() {
-            if item.name.as_str() != commands[1] {
-              continue;
-            }
-            let data = initfs.data(i);
-            for byte in data {
-              serial_print!("{}", *byte as char);
-            }
+          let Some(i) = initfs.get_file_index_from_name(commands[1]) else {
+            serial_println!("Error: File not found");
+            return;
+          };
+          let data = initfs.data(i);
+          for byte in data {
+            serial_print!("{}", *byte as char);
           }
         }
       }
@@ -111,14 +110,13 @@ pub extern "sysv64" fn kernel_main(memmap: &MemoryMap, initfs_img: &Vec<u8>) -> 
         if commands.len() < 2 {
           serial_println!("Error: please specify file name");
         } else {
-          for (i, item) in initfs.files.iter().enumerate() {
-            if item.name.as_str() != commands[1] {
-              continue;
-            }
-            let data = initfs.data(i);
-            for byte in data {
-              serial_print!("{:02x} ", *byte);
-            }
+          let Some(i) = initfs.get_file_index_from_name(commands[1]) else {
+            serial_println!("Error: File not found");
+            return;
+          };
+          let data = initfs.data(i);
+          for byte in data {
+            serial_print!("{:02x} ", *byte);
           }
         }
       }
@@ -126,46 +124,49 @@ pub extern "sysv64" fn kernel_main(memmap: &MemoryMap, initfs_img: &Vec<u8>) -> 
         if commands.len() < 2 {
           serial_println!("Error: please specify file name");
         } else {
-          for (i, item) in initfs.files.iter().enumerate() {
-            if item.name.as_str() != commands[1] {
-              continue;
-            }
-            let file_data = initfs.data(i);
-            let Ok(elf) = Elf::from_bytes(file_data) else {
-              serial_println!("Error: file '{}' is not a ELF file", item.name);
-              break;
+          let Some(i) = initfs.get_file_index_from_name(commands[1]) else {
+            serial_println!("Error: File not found");
+            return;
+          };
+          let file_data = initfs.data(i);
+          let Ok(elf) = Elf::from_bytes(file_data) else {
+              serial_println!("Error: file '{}' is not a ELF file", commands[1]);
+              return;
             };
-            let mut entry_addr = initfs.item_addr(i) as u64;
-
-            // FIXME: handle LOAD segment properly
-            for section in elf.section_header_iter() {
-              let section_name = section
-                .section_name()
-                .unwrap_or(&[])
-                .iter()
-                .map(|&c| c as char)
-                .collect::<String>();
-              if section_name == ".text" {
-                entry_addr += section.offset();
-                break;
-              }
-            }
-
-            let ret: u64;
-            unsafe {
-              asm!(
-                "call {}",
-                "mov  {}, rdi",
-                in(reg) entry_addr,
-                out(reg) ret,
-              );
-            }
-            serial_println!("Exit: {}", ret);
+          if elf.elf_header().elftype() != ElfType::ET_EXEC {
+            serial_println!("Error: invalid ELF type ({:?})", elf.elf_header().elftype());
+            return;
           }
+
+          let mut entry_addr = initfs.item_addr(i) as u64;
+          // FIXME: handle LOAD segment properly
+          for section in elf.section_header_iter() {
+            let section_name = section
+              .section_name()
+              .unwrap_or(&[])
+              .iter()
+              .map(|&c| c as char)
+              .collect::<String>();
+            if section_name == ".text" {
+              entry_addr += section.offset();
+              break;
+            }
+          }
+
+          let ret: u64;
+          unsafe {
+            asm!(
+              "call {}",
+              "mov  {}, rdi",
+              in(reg) entry_addr,
+              out(reg) ret,
+            );
+          }
+          serial_println!("Exit: {}", ret);
         }
       }
-      _ => serial_println!("Unknown command"),
-    }
+      _ => serial_println!("Error: Unknown command"),
+    })();
     command.clear();
     serial_println!();
   }

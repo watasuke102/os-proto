@@ -122,6 +122,15 @@ impl Fat {
     fat
   }
 
+  pub fn get_file_index_from_name(&self, name: &str) -> Option<usize> {
+    for (i, item) in self.files.iter().enumerate() {
+      if item.name.as_str() == name {
+        return Some(i);
+      }
+    }
+    None
+  }
+
   pub fn data(&self, index: usize) -> &[u8] {
     let file = &self.files[index];
     &self.data[file.begin_addr..file.begin_addr + file.size]
