@@ -2,7 +2,7 @@ use common::serial_println;
 use x86_64::{
   registers::control::{Cr3, Cr3Flags},
   structures::paging::*,
-  PhysAddr,
+  PhysAddr, VirtAddr,
 };
 
 const EMPTY_PAGE_TABLE: PageTable = PageTable::new();
@@ -34,4 +34,27 @@ pub fn init() {
     }
     Cr3::write(phys_frame_from_table(&PML4_TABLE), Cr3Flags::empty());
   }
+}
+
+pub struct EmptyFrameAllocator;
+unsafe impl FrameAllocator<Size4KiB> for EmptyFrameAllocator {
+  fn allocate_frame(&mut self) -> Option<PhysFrame> {
+    None
+  }
+}
+
+pub unsafe fn map(vaddr: VirtAddr, paddr: PhysAddr) {
+  let mut mapper = OffsetPageTable::new(&mut PML4_TABLE, VirtAddr::new(0));
+  let mut fa = EmptyFrameAllocator;
+  mapper.map_to(
+    Page::<Size2MiB>::containing_address(vaddr),
+    PhysFrame::<Size2MiB>::containing_address(paddr),
+    PageTableFlags::PRESENT | PageTableFlags::WRITABLE,
+    &mut fa,
+  ).unwrap().flush();
+}
+
+pub unsafe fn unmap(vaddr: VirtAddr) {
+  let mut mapper = OffsetPageTable::new(&mut PML4_TABLE, VirtAddr::new(0));
+  mapper.unmap(Page::<Size2MiB>::containing_address(vaddr)).unwrap().1.flush();
 }
