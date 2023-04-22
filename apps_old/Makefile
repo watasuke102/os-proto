@@ -4,8 +4,11 @@ BUILD_DIR  := build
 all: none.asm
 	bash -c "cp -r build/*.elf ../initfs/"
 
-%.elf: %.asm
-	nasm -f elf64 -o $(BUILD_DIR)/$@ $<
+$(BUILD_DIR)/%.elf: %.asm $(BUILD_DIR)
+	nasm -f elf64 -o $@ $<
+
+%.elf: %.c
+	clang 
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
