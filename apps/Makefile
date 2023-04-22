@@ -1,10 +1,11 @@
-BUILD_DIR  := build
+BUILD_DIR := build
+SRC       := $(shell find . -name "*.asm")
 
 .PHONY: all
-all: none.asm
+all: $(SRC:.asm=.elf)
 	bash -c "cp -r build/*.elf ../initfs/"
 
-%.elf: %.asm
+%.elf: %.asm $(BUILD_DIR)
 	nasm -f elf64 -o $(BUILD_DIR)/$@ $<
 
 $(BUILD_DIR):
