@@ -6,7 +6,8 @@ all: $(SRC:.asm=.elf)
 	bash -c "cp -r build/*.elf ../initfs/"
 
 %.elf: %.asm $(BUILD_DIR)
-	nasm -f elf64 -o $(BUILD_DIR)/$@ $<
+	nasm -f elf64 -o $(BUILD_DIR)/$*.o $<
+	ld -o $(BUILD_DIR)/$*.elf $(BUILD_DIR)/$*.o
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)

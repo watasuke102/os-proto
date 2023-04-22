@@ -1,6 +1,6 @@
 bits 64
 section .text
-global main
-main:
+global _start
+_start:
 	mov	rdi, 0x17
 	ret

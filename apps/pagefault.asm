@@ -1,7 +1,7 @@
 bits 64
 section .text
-global main
-main:
+global _start
+_start:
 	push	rax
 	mov	rax, 0xff
 	shl	rax, 56
