@@ -10,6 +10,7 @@
 #![feature(associated_type_bounds)]
 
 extern crate alloc;
+mod exec;
 mod fat;
 mod interrupt;
 mod linked_list;
@@ -128,41 +129,7 @@ pub extern "sysv64" fn kernel_main(memmap: &MemoryMap, initfs_img: &Vec<u8>) -> 
             serial_println!("Error: File not found");
             return;
           };
-          let file_data = initfs.data(i);
-          let Ok(elf) = Elf::from_bytes(file_data) else {
-              serial_println!("Error: file '{}' is not a ELF file", commands[1]);
-              return;
-            };
-          if elf.elf_header().elftype() != ElfType::ET_EXEC {
-            serial_println!("Error: invalid ELF type ({:?})", elf.elf_header().elftype());
-            return;
-          }
-
-          let mut entry_addr = initfs.item_addr(i) as u64;
-          // FIXME: handle LOAD segment properly
-          for section in elf.section_header_iter() {
-            let section_name = section
-              .section_name()
-              .unwrap_or(&[])
-              .iter()
-              .map(|&c| c as char)
-              .collect::<String>();
-            if section_name == ".text" {
-              entry_addr += section.offset();
-              break;
-            }
-          }
-
-          let ret: u64;
-          unsafe {
-            asm!(
-              "call {}",
-              "mov  {}, rdi",
-              in(reg) entry_addr,
-              out(reg) ret,
-            );
-          }
-          serial_println!("Exit: {}", ret);
+          exec::execute_elf(initfs.data(i), initfs.item_addr(i) as u64);
         }
       }
       _ => serial_println!("Error: Unknown command"),
