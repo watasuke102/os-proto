@@ -3,7 +3,7 @@ SRC       := $(shell find . -name "*.asm")
 
 .PHONY: all
 all: $(SRC:.asm=.elf)
-	bash -c "cp -r build/*.elf ../initfs/"
+	bash -c "cp -rv build/*.elf ../initfs/"
 
 %.elf: %.asm $(BUILD_DIR)
 	nasm -f elf64 -o $(BUILD_DIR)/$*.o $<
