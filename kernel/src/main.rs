@@ -132,6 +132,7 @@ pub extern "sysv64" fn kernel_main(memmap: &MemoryMap, initfs_img: &Vec<u8>) -> 
           exec::execute_elf(initfs.data(i), initfs.item_addr(i) as u64);
         }
       }
+      "int" => x86_64::instructions::interrupts::int3(),
       _ => serial_println!("Error: Unknown command"),
     })();
     command.clear();
