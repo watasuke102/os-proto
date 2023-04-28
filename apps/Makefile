@@ -10,7 +10,7 @@ all: $(addsuffix .elf, $(basename $(SRC)))
 	ld -o $(BUILD_DIR)/$*.elf $(BUILD_DIR)/$*.o
 
 %.elf: %.c $(BUILD_DIR)
-	clang -nostartfiles -fPIC -o $(BUILD_DIR)/$@ $<
+	clang -nostartfiles -fPIC -g -o $(BUILD_DIR)/$@ $<
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)

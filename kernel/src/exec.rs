@@ -18,7 +18,7 @@ pub fn execute_elf(data: &[u8], mut entry_addr: u64) {
       .map(|&c| c as char)
       .collect::<String>();
     if section_name == ".text" {
-      entry_addr += section.offset();
+      entry_addr += section.offset() + (elf.entry_point() - section.addr());
       break;
     }
   }
@@ -27,7 +27,7 @@ pub fn execute_elf(data: &[u8], mut entry_addr: u64) {
   unsafe {
     asm!(
       "call {}",
-      "mov  {}, rdi",
+      "mov  {}, rax",
       in(reg) entry_addr,
       out(reg) ret,
     );
