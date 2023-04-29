@@ -6,6 +6,7 @@ INITFS_ITEM := $(shell find initfs)
 COMMON_SRC  := $(shell find common -name "*.rs")
 LOADER_SRC  := $(COMMON_SRC) $(shell find loader -name "*.rs")
 KERNEL_SRC  := $(COMMON_SRC) $(shell find kernel -name "*.rs")
+APPS        := none fib
 
 .PHONY: all r mount umount kill apps loader kernel
 
@@ -31,7 +32,8 @@ kill:
 	killall qemu-system-x86_64 -s SIGKILL
 
 apps:
-	cd apps && make
+	cd apps && cargo build
+	cp -v $(addprefix apps/target/x86_64-unknown-none/debug/, $(APPS)) initfs/
 
 loader: $(BUILD_DIR) $(BUILD_DIR)/loader.efi
 $(BUILD_DIR)/loader.efi: $(LOADER_SRC)
