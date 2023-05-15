@@ -78,6 +78,7 @@ pub extern "sysv64" fn kernel_main(memmap: &MemoryMap, initfs_img: &Vec<u8>) -> 
     let commands: Vec<&str> = command.split(' ').collect();
 
     (|| match commands[0] {
+      "" => (),
       "echo" => {
         for arg in commands.iter().skip(1) {
           serial_print!("{} ", arg);
