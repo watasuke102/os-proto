@@ -23,14 +23,7 @@ pub fn execute_elf(data: &[u8], mut entry_addr: u64) {
     }
   }
 
-  let ret: u64;
-  unsafe {
-    asm!(
-      "call {}",
-      "mov  {}, rax",
-      in(reg) entry_addr,
-      out(reg) ret,
-    );
-  }
+  let entrypoint: fn() -> u64 = unsafe { core::mem::transmute::<u64, fn() -> u64>(entry_addr) };
+  let ret = entrypoint();
   serial_println!("Exit: {}", ret);
 }
