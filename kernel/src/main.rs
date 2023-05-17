@@ -65,7 +65,7 @@ pub extern "sysv64" fn kernel_main(memmap: &MemoryMap, initfs_img: &Vec<u8>) -> 
       } else if c as u8 == 13 {
         // Enter
         break;
-      } else if c as u8 == 127 {
+      } else if c as u8 == 127 && !command.is_empty() {
         // BS
         serial::print_raw(8);
         serial::print_raw(' ' as u8);
