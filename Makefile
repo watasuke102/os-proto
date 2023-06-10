@@ -12,7 +12,7 @@ APPS        := none fib
 all: r
 b: $(BUILD_DIR)/image.img
 r: $(BUILD_DIR)/image.img
-	@echo -e "\e[42m>> Starting... \e[m"
+	@echo -e "\e[32;7m>> Starting... \e[m"
 	@qemu-system-x86_64 -s -nographic -m 1G \
 		-drive if=pflash,format=raw,readonly=on,file=OVMF_CODE.fd \
 		-drive if=pflash,format=raw,file=OVMF_VARS.fd \
@@ -31,20 +31,24 @@ kill:
 	killall qemu-system-x86_64 -s SIGKILL
 
 apps:
+	@echo -e "\e[34;1m> Apps\e[m"
 	cd apps && cargo build
 	cp -v $(addprefix apps/target/x86_64-unknown-none/debug/, $(APPS)) initfs/
 
 loader: $(BUILD_DIR) $(BUILD_DIR)/loader.efi
 $(BUILD_DIR)/loader.efi: $(LOADER_SRC)
+	@echo -e "\e[34;1m> loader\e[m"
 	cd loader && cargo build
 	cp loader/target/x86_64-unknown-uefi/debug/loader.efi $(BUILD_DIR)/loader.efi
 
 kernel: $(BUILD_DIR) $(BUILD_DIR)/kernel.elf
 $(BUILD_DIR)/kernel.elf: $(KERNEL_SRC)
+	@echo -e "\e[34;1m> kernel\e[m"
 	cd kernel && cargo build
 	cp kernel/target/x86_64-unknown-os/debug/kernel $(BUILD_DIR)/kernel.elf
 
 $(BUILD_DIR)/image.img: $(BUILD_DIR) $(BUILD_DIR)/kernel.elf $(BUILD_DIR)/loader.efi $(BUILD_DIR)/initfs.img
+	@echo -e "\e[34;1m> image.img\e[m"
 	qemu-img create -f raw $@ 128M
 	mkfs.fat $@
 	mmd   -i $@ EFI
@@ -54,7 +58,7 @@ $(BUILD_DIR)/image.img: $(BUILD_DIR) $(BUILD_DIR)/kernel.elf $(BUILD_DIR)/loader
 	mcopy -i $@ $(BUILD_DIR)/initfs.img ::
 
 $(BUILD_DIR)/initfs.img: $(BUILD_DIR) $(INITFS_ITEM) apps
-$(BUILD_DIR)/initfs.img: $(BUILD_DIR) $(MOUNT_DIR) $(INITFS_ITEM) apps
+	@echo -e "\e[34;1m> initfs.img\e[m"
 	qemu-img create -f raw $@ 8M
 	mkfs.fat -n 'INITFS' -s2 -f2 -R32 -F32 $@
 	mcopy -i $@ initfs/* ::
