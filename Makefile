@@ -1,6 +1,5 @@
 BUILD_DIR  := build
 MOUNT_DIR  ?= "$(BUILD_DIR)/mnt"
-EFI_DIR    ?= "$(MOUNT_DIR)/EFI/BOOT"
 
 INITFS_ITEM := $(shell find initfs)
 COMMON_SRC  := $(shell find common -name "*.rs")
@@ -10,10 +9,8 @@ APPS        := none fib
 
 .PHONY: all r mount umount kill apps loader kernel
 
-all: $(BUILD_DIR)/image.img
-	make r
-
-b: loader kernel
+all: r
+b: $(BUILD_DIR)/image.img
 r: $(BUILD_DIR)/image.img
 	@echo -e "\e[42m>> Starting... \e[m"
 	@qemu-system-x86_64 -s -nographic -m 1G \
@@ -25,7 +22,9 @@ r: $(BUILD_DIR)/image.img
 # -device nec-usb-xhci,id=xhci -device usb-kbd -device usb-mouse \
 
 mount:
-	sudo mount -o loop $(BUILD_DIR)/image.img $(BUILD_DIR)/mnt
+	sudo mount -o loop $(BUILD_DIR)/image.img $(MOUNT_DIR)
+mount-initfs:
+	sudo mount -o loop $(BUILD_DIR)/initfs.img $(MOUNT_DIR)
 umount:
 	sudo umount $(BUILD_DIR)/mnt
 kill:
@@ -45,25 +44,17 @@ $(BUILD_DIR)/kernel.elf: $(KERNEL_SRC)
 	cd kernel && cargo build
 	cp kernel/target/x86_64-unknown-os/debug/kernel $(BUILD_DIR)/kernel.elf
 
-$(BUILD_DIR)/image.img: $(BUILD_DIR) $(MOUNT_DIR) $(BUILD_DIR)/kernel.elf $(BUILD_DIR)/loader.efi $(BUILD_DIR)/initfs.img
+$(BUILD_DIR)/image.img: $(BUILD_DIR) $(BUILD_DIR)/kernel.elf $(BUILD_DIR)/loader.efi $(BUILD_DIR)/initfs.img
 	qemu-img create -f raw $@ 128M
 	mkfs.fat $@
-	sudo mount -o loop $@ $(MOUNT_DIR)
-	[ ! -e $(EFI_DIR) ] && sudo mkdir -p $(EFI_DIR)
-	sudo cp $(BUILD_DIR)/loader.efi $(EFI_DIR)/BOOTX64.EFI
-	sudo cp $(BUILD_DIR)/kernel.elf $(MOUNT_DIR)
-	sudo cp $(BUILD_DIR)/initfs.img $(MOUNT_DIR)
-	sudo umount $(MOUNT_DIR)
+	mmd   -i $@ EFI
+	mmd   -i $@ EFI/BOOT
+	mcopy -i $@ $(BUILD_DIR)/loader.efi ::/EFI/BOOT/BOOTX64.EFI
+	mcopy -i $@ $(BUILD_DIR)/kernel.elf ::
+	mcopy -i $@ $(BUILD_DIR)/initfs.img ::
 
+$(BUILD_DIR)/initfs.img: $(BUILD_DIR) $(INITFS_ITEM) apps
 $(BUILD_DIR)/initfs.img: $(BUILD_DIR) $(MOUNT_DIR) $(INITFS_ITEM) apps
 	qemu-img create -f raw $@ 8M
 	mkfs.fat -n 'INITFS' -s2 -f2 -R32 -F32 $@
-	sudo mount -o loop $@ $(MOUNT_DIR)
-	sudo cp initfs/* $(MOUNT_DIR)
-	sudo umount $(MOUNT_DIR)
-
-$(BUILD_DIR):
-	mkdir -p $(BUILD_DIR)
-
-$(MOUNT_DIR):
-	mkdir -p $(MOUNT_DIR)
+	mcopy -i $@ initfs/* ::
