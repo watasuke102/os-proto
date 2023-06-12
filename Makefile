@@ -1,25 +1,28 @@
 IMG_DIR    := img
 LOADER_DIR := $(IMG_DIR)/EFI/BOOT
+OVMF_DIR   := /usr/share/edk2-ovmf/x64
 
-INITFS_ITEM := $(shell find initfs)
+INITFS_ITEM := $(shell find initfs -type f)
 COMMON_SRC  := $(shell find common -name "*.rs")
 LOADER_SRC  := $(COMMON_SRC) $(shell find loader -name "*.rs")
 KERNEL_SRC  := $(COMMON_SRC) $(shell find kernel -name "*.rs")
 APPS        := none fib
 
-.PHONY: all b r kill apps loader kernel
+.PHONY: all b r kill apps loader kernel initfs
 
 all: r
 b: loader kernel initfs
-r: loader kernel initfs
+r: loader kernel initfs OVMF_VARS.fd
 	@echo -e "\e[32;7m>> Starting... \e[m"
 	@qemu-system-x86_64 -s -nographic -m 1G \
-		-drive if=pflash,format=raw,readonly=on,file=OVMF_CODE.fd \
+		-drive if=pflash,format=raw,readonly=on,file=$(OVMF_DIR)/OVMF_CODE.fd \
 		-drive if=pflash,format=raw,file=OVMF_VARS.fd \
 		-drive format=raw,file=fat:rw:$(IMG_DIR)
 
+OVMF_VARS.fd:
+	cp $(OVMF_DIR)/OVMF_VARS.fd .
+
 # -d int,cpu_reset
-# -device nec-usb-xhci,id=xhci -device usb-kbd -device usb-mouse \
 
 kill:
 	killall qemu-system-x86_64 -s SIGKILL
