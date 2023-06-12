@@ -1,4 +1,4 @@
-/build
+/img
 /initfs
 OVMF_*.fd
 .gdb_history
