@@ -1,8 +1,5 @@
 #![no_std]
 #![no_main]
-#![allow(dead_code)]
-#![allow(unused_imports)]
-#![allow(unused_variables)]
 #![feature(const_mut_refs)]
 #![feature(abi_x86_interrupt)]
 #![feature(vec_into_raw_parts)]
@@ -16,20 +13,11 @@ mod interrupt;
 mod linked_list;
 mod memory;
 
-use alloc::{
-  alloc::Layout,
-  string::String,
-  vec::{self, Vec},
-};
+use alloc::{alloc::Layout, string::String, vec::Vec};
 use common::{memory_map::MemoryMap, serial, serial_print, serial_println};
-use core::{arch::asm, mem::transmute, panic::PanicInfo};
-use elf_rs::{Elf, ElfFile, ElfType, ProgramType};
-use kernel::*;
+use core::panic::PanicInfo;
 use memory::*;
-use uefi::proto::media::file;
 use x86_64::instructions::hlt;
-
-use crate::interrupt::init;
 
 #[panic_handler]
 fn handle_panic(info: &PanicInfo) -> ! {

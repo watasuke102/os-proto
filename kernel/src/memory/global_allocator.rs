@@ -30,11 +30,6 @@ pub fn init(memmap: &MemoryMap) {
   );
 }
 
-pub fn print_free_memory() {
-  let mem = ALLOCATOR.lock().total_size();
-  serial_println!("[Debug] free memory: {} ({} MB)", mem, mem / (1024 * 1024));
-}
-
 struct Allocator {
   item: Mutex<LinkedListAllocator>,
 }

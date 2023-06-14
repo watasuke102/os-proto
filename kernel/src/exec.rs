@@ -1,7 +1,6 @@
 use alloc::string::String;
 use common::serial_println;
-use core::arch::asm;
-use elf_rs::{Elf, ElfFile, ElfType, ProgramType};
+use elf_rs::{Elf, ElfFile};
 
 pub fn execute_elf(data: &[u8], mut entry_addr: u64) {
   let Ok(elf) = Elf::from_bytes(data) else {

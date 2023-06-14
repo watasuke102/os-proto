@@ -14,10 +14,6 @@ impl LinkedListAllocator {
     }
   }
 
-  pub unsafe fn init(&mut self, heap_begin: usize, heap_size: usize) {
-    self.add_free_region(heap_begin, heap_size);
-  }
-
   /// return (size, align)
   pub fn size_align(layout: Layout) -> (usize, usize) {
     let layout = layout

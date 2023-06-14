@@ -1,9 +1,6 @@
 use common::serial_println;
 use x86_64::{
-  instructions::{
-    interrupts,
-    port::{PortReadOnly, PortWriteOnly},
-  },
+  instructions::interrupts,
   structures::idt::{InterruptDescriptorTable, InterruptStackFrame},
 };
 

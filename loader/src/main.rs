@@ -1,36 +1,24 @@
 #![no_std]
 #![no_main]
-#![feature(abi_efiapi)]
 #![feature(vec_into_raw_parts)]
-#![allow(dead_code)]
-#![allow(unused_imports)]
-#![allow(unused_variables)]
 
 extern crate alloc;
 use alloc::{vec, vec::Vec};
 use common::{
   memory_map::{is_available_memory, MemoryMap, MEMORYMAP_LIST_LEN},
-  serial_print, serial_println,
-  vec2::Vec2,
+  serial_println,
 };
 use core::{arch::asm, fmt::Write};
 use elf_rs::{Elf, ElfFile, ProgramType};
 use uefi::{
   prelude::*,
-  proto::{
-    console::gop::GraphicsOutput,
-    media::file::{File, FileAttribute, FileMode, FileType::*, RegularFile},
-  },
-  table::boot::{
-    self, AllocateType, MemoryDescriptor, MemoryType, OpenProtocolAttributes, OpenProtocolParams,
-  },
-  CStr16, ResultExt,
+  proto::media::file::{File, FileAttribute, FileMode, FileType::*, RegularFile},
+  table::boot::MemoryDescriptor,
+  CStr16,
 };
 
 #[derive(Debug)]
 struct LoadSegment {
-  begin:       u64,
-  end:         u64,
   offset:      u64,
   vaddr:       u64,
   memory_size: u64,
@@ -64,8 +52,6 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
   for program_header in elf.program_header_iter() {
     if program_header.ph_type() == ProgramType::LOAD {
       load_segment.push(LoadSegment {
-        begin:       program_header.paddr(),
-        end:         program_header.paddr() + program_header.memsz(),
         offset:      program_header.offset(),
         vaddr:       program_header.vaddr(),
         file_size:   program_header.filesz(),
@@ -93,14 +79,13 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
   initfs.read(&mut initfs_pool).unwrap();
 
   // get memmap
-  let memmap_size = table.boot_services().memory_map_size().map_size;
   let mut memmap = MemoryMap {
     list: [MemoryDescriptor::default(); MEMORYMAP_LIST_LEN],
     len:  0,
   };
   let mut buf = [0 as u8; 1024 * 8];
   println!("[Info] Exiting boot services");
-  let (memmap_key, memmap_iter) = table.exit_boot_services(handle, &mut buf).unwrap();
+  let (_, memmap_iter) = table.exit_boot_services(handle, &mut buf).unwrap();
   serial_println!(
     "[Debug] end of boot services (memmap: {})",
     memmap_iter.len()

@@ -1,4 +1,3 @@
-use common::serial_println;
 use x86_64::{
   registers::control::{Cr3, Cr3Flags},
   structures::paging::*,
