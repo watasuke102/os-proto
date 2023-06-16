@@ -54,17 +54,6 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
   // calculate LOAD segment range
   let elf = Elf::from_bytes(&loader_pool).unwrap();
   let kernel_entry = elf.entry_point();
-  serial_println!(
-    ">>> Kernel: {} (pool: {}), entry: {} or {}, first: {:x} {:x} {:x} {:x}",
-    kernel_size,
-    loader_pool.len(),
-    kernel_entry,
-    elf.entry_point(),
-    loader_pool[0],
-    loader_pool[1],
-    loader_pool[2],
-    loader_pool[3]
-  );
   let mut load_segment = Vec::<LoadSegment>::new();
   for program_header in elf.program_header_iter() {
     if program_header.ph_type() == ProgramType::LOAD {
@@ -79,7 +68,6 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
   // load kernel to memory
   let (kernel_ptr, _, _) = loader_pool.into_raw_parts();
   for seg in load_segment.iter() {
-    serial_println!("> load: {}", seg.vaddr);
     let src = (kernel_ptr as u64 + seg.offset) as *mut u8;
     let dst = seg.vaddr as *mut u8;
 
