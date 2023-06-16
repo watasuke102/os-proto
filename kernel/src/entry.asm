@@ -2,7 +2,7 @@ extern kernel_main
 
 section .bss
 kernel_stack:
-	align 64
+	align	64
 	resb	1024*1024
 
 section .text
