@@ -12,8 +12,14 @@ use core::{arch::asm, fmt::Write};
 use elf_rs::{Elf, ElfFile, ProgramType};
 use uefi::{
   prelude::*,
-  proto::media::file::{File, FileAttribute, FileMode, FileType::*, RegularFile},
-  table::boot::MemoryDescriptor,
+  proto::{
+    loaded_image::LoadedImage,
+    media::{
+      file::{File, FileAttribute, FileMode, FileType::*, RegularFile},
+      fs::SimpleFileSystem,
+    },
+  },
+  table::boot::{self, MemoryDescriptor},
   CStr16,
 };
 
@@ -48,6 +54,17 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
   // calculate LOAD segment range
   let elf = Elf::from_bytes(&loader_pool).unwrap();
   let kernel_entry = elf.entry_point();
+  serial_println!(
+    ">>> Kernel: {} (pool: {}), entry: {} or {}, first: {:x} {:x} {:x} {:x}",
+    kernel_size,
+    loader_pool.len(),
+    kernel_entry,
+    elf.entry_point(),
+    loader_pool[0],
+    loader_pool[1],
+    loader_pool[2],
+    loader_pool[3]
+  );
   let mut load_segment = Vec::<LoadSegment>::new();
   for program_header in elf.program_header_iter() {
     if program_header.ph_type() == ProgramType::LOAD {
@@ -62,6 +79,7 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
   // load kernel to memory
   let (kernel_ptr, _, _) = loader_pool.into_raw_parts();
   for seg in load_segment.iter() {
+    serial_println!("> load: {}", seg.vaddr);
     let src = (kernel_ptr as u64 + seg.offset) as *mut u8;
     let dst = seg.vaddr as *mut u8;
 
@@ -83,9 +101,9 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
     list: [MemoryDescriptor::default(); MEMORYMAP_LIST_LEN],
     len:  0,
   };
-  let mut buf = [0 as u8; 1024 * 8];
   println!("[Info] Exiting boot services");
-  let (_, memmap_iter) = table.exit_boot_services(handle, &mut buf).unwrap();
+  let (_, memmap_table) = table.exit_boot_services();
+  let memmap_iter = memmap_table.entries().into_iter();
   serial_println!(
     "[Debug] end of boot services (memmap: {})",
     memmap_iter.len()
@@ -118,8 +136,11 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
 /// Cause panic when try to open directory (specify directory name)
 fn open_file(boot_services: &BootServices, handle: &Handle, name: &CStr16) -> (RegularFile, u64) {
   // open root dir
+  let loaded_image = boot_services
+    .open_protocol_exclusive::<LoadedImage>(boot_services.image_handle())
+    .unwrap();
   let mut dir = boot_services
-    .get_image_file_system(*handle)
+    .open_protocol_exclusive::<SimpleFileSystem>(loaded_image.device())
     .unwrap()
     .open_volume()
     .unwrap();
