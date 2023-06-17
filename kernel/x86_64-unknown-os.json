@@ -14,6 +14,6 @@
   "disable-redzone": true,
   "features": "-mmx,-sse,+soft-float",
   "post-link-args": {
-    "ld.lld": ["--entry=kernel_entry", "--image-base=0x1900000", "--static"]
+    "ld.lld": ["--entry=kernel_entry", "--image-base=0x100000", "--static"]
   }
 }

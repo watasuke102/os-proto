@@ -7,9 +7,8 @@ use alloc::{vec, vec::Vec};
 use common::{
   log_debug, log_info,
   memory_map::{is_available_memory, MemoryMap, MEMORYMAP_LIST_LEN},
-  serial_println,
 };
-use core::{arch::asm, fmt::Write};
+use core::arch::asm;
 use elf_rs::{Elf, ElfFile, ProgramType};
 use uefi::{
   prelude::*,
@@ -20,7 +19,7 @@ use uefi::{
       fs::SimpleFileSystem,
     },
   },
-  table::boot::{self, MemoryDescriptor},
+  table::boot::MemoryDescriptor,
   CStr16,
 };
 
@@ -40,8 +39,7 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
 
   // open kernel file
   log_info!("Loading kernel");
-  let (mut kernel_file, kernel_size) =
-    open_file(table.boot_services(), &handle, cstr16!("kernel.elf"));
+  let (mut kernel_file, kernel_size) = open_file(table.boot_services(), cstr16!("kernel.elf"));
   let mut loader_pool = vec![0; kernel_size as usize];
   kernel_file.read(&mut loader_pool).unwrap();
   // calculate LOAD segment range
@@ -73,7 +71,7 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
 
   // open initfs.img
   log_info!("Loading initial fs");
-  let (mut initfs, initfs_size) = open_file(table.boot_services(), &handle, cstr16!("initfs.img"));
+  let (mut initfs, initfs_size) = open_file(table.boot_services(), cstr16!("initfs.img"));
   let mut initfs_pool = vec![0; initfs_size as usize];
   initfs.read(&mut initfs_pool).unwrap();
 
@@ -112,7 +110,7 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
 
 /// Open file and return (file: RegularFile, size: u64)
 /// Cause panic when try to open directory (specify directory name)
-fn open_file(boot_services: &BootServices, handle: &Handle, name: &CStr16) -> (RegularFile, u64) {
+fn open_file(boot_services: &BootServices, name: &CStr16) -> (RegularFile, u64) {
   // open root dir
   let loaded_image = boot_services
     .open_protocol_exclusive::<LoadedImage>(boot_services.image_handle())
