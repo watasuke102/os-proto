@@ -1,4 +1,4 @@
-use common::serial_println;
+use common::{log_debug, log_info};
 use x86_64::{
   instructions::interrupts,
   structures::idt::{InterruptDescriptorTable, InterruptStackFrame},
@@ -8,18 +8,18 @@ static mut IDT: InterruptDescriptorTable = InterruptDescriptorTable::new();
 
 pub fn init() {
   interrupts::disable();
-  serial_println!("[Debug] initing interrupt...");
+  log_debug!("initing interrupt...");
   unsafe {
     IDT.breakpoint.set_handler_fn(handle_breakpoint);
     IDT.double_fault.set_handler_fn(handle_doublefault);
     IDT.load();
   }
   interrupts::enable();
-  serial_println!("[Debug] Interrupt enabled");
+  log_debug!("Interrupt enabled");
 }
 
 extern "x86-interrupt" fn handle_breakpoint(stack_frame: InterruptStackFrame) {
-  serial_println!("[Exception] (Breakpoint)\r\n{:#?}", stack_frame);
+  log_info!("Breakpoint Exception\r\n{:#?}", stack_frame);
 }
 extern "x86-interrupt" fn handle_doublefault(
   stack_frame: InterruptStackFrame,

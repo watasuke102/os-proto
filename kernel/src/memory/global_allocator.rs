@@ -1,7 +1,9 @@
 use crate::memory::linked_list_allocator::LinkedListAllocator;
-use crate::serial_println;
 use alloc::alloc::{GlobalAlloc, Layout};
-use common::memory_map::{is_available_memory, MemoryMap};
+use common::{
+  log_info,
+  memory_map::{is_available_memory, MemoryMap},
+};
 use core::ptr::null_mut;
 use spin::{Mutex, MutexGuard};
 
@@ -23,7 +25,7 @@ pub fn init(memmap: &MemoryMap) {
   }
 
   let size = ALLOCATOR.lock().total_size();
-  serial_println!(
+  log_info!(
     "Allocator inited: total_size={} ({} MB)",
     size,
     size / (1024 * 1024),

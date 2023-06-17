@@ -5,6 +5,7 @@
 extern crate alloc;
 use alloc::{vec, vec::Vec};
 use common::{
+  log_debug, log_info,
   memory_map::{is_available_memory, MemoryMap, MEMORYMAP_LIST_LEN},
   serial_println,
 };
@@ -33,20 +34,12 @@ struct LoadSegment {
 
 #[entry]
 fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
-  macro_rules! print {
-    ($($arg:tt)*) => { write!(table.stdout(), "{}", format_args!($($arg)*)).unwrap() };
-  }
-  macro_rules! println {
-    () => { print!("\n"); };
-    ($($arg:tt)*) => { print!("{}\n", format_args!($($arg)*)) };
-  }
-
   table.stdout().clear().unwrap();
   uefi_services::init(&mut table).unwrap();
-  println!("[Log] Started boot loader");
+  log_info!("Started boot loader");
 
   // open kernel file
-  println!("[Log] Loading kernel");
+  log_info!("Loading kernel");
   let (mut kernel_file, kernel_size) =
     open_file(table.boot_services(), &handle, cstr16!("kernel.elf"));
   let mut loader_pool = vec![0; kernel_size as usize];
@@ -79,7 +72,7 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
   }
 
   // open initfs.img
-  println!("[Log] Loading initial fs");
+  log_info!("Loading initial fs");
   let (mut initfs, initfs_size) = open_file(table.boot_services(), &handle, cstr16!("initfs.img"));
   let mut initfs_pool = vec![0; initfs_size as usize];
   initfs.read(&mut initfs_pool).unwrap();
@@ -89,13 +82,10 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
     list: [MemoryDescriptor::default(); MEMORYMAP_LIST_LEN],
     len:  0,
   };
-  println!("[Info] Exiting boot services");
+  log_info!("Exiting boot services");
   let (_, memmap_table) = table.exit_boot_services();
   let memmap_iter = memmap_table.entries().into_iter();
-  serial_println!(
-    "[Debug] end of boot services (memmap: {})",
-    memmap_iter.len()
-  );
+  log_debug!("end of boot services (memmap: {})", memmap_iter.len());
 
   for desc in memmap_iter {
     if is_available_memory(desc.ty) {
@@ -106,8 +96,8 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
 
   let entry: extern "sysv64" fn(&MemoryMap, &Vec<u8>) =
     unsafe { core::mem::transmute(kernel_entry) };
-  serial_println!(
-    "[Info] Let's go! (entrypoint: 0x{:x} | 0x{:x})",
+  log_debug!(
+    "Let's go! (entrypoint: 0x{:x} | 0x{:x})",
     kernel_entry,
     entry as u64
   );

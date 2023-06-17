@@ -14,14 +14,16 @@ mod linked_list;
 mod memory;
 
 use alloc::{alloc::Layout, string::String, vec::Vec};
-use common::{memory_map::MemoryMap, serial, serial_print, serial_println};
+use common::{
+  log_debug, log_error, log_info, memory_map::MemoryMap, serial, serial_print, serial_println,
+};
 use core::panic::PanicInfo;
 use memory::*;
 use x86_64::instructions::hlt;
 
 #[panic_handler]
 fn handle_panic(info: &PanicInfo) -> ! {
-  serial_println!("[PANIC] {}", info);
+  log_error!("PANIC: {}", info);
   loop {
     hlt();
   }
@@ -33,7 +35,7 @@ fn handle_alloc_error(layout: Layout) -> ! {
 
 #[no_mangle]
 pub extern "sysv64" fn kernel_main(memmap: &MemoryMap, initfs_img: &Vec<u8>) -> ! {
-  serial_println!("Welcome to kernel!");
+  log_info!("Welcome to kernel!");
   segment::init();
   paging::init();
   global_allocator::init(&memmap);
@@ -42,7 +44,7 @@ pub extern "sysv64" fn kernel_main(memmap: &MemoryMap, initfs_img: &Vec<u8>) -> 
   let initfs = fat::Fat::new(initfs_img.to_vec());
 
   let mut command = String::new();
-  serial_println!("Start loop");
+  log_debug!("Start loop");
   loop {
     serial_print!(">> ");
     loop {
