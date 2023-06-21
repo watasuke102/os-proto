@@ -124,6 +124,9 @@ pub extern "sysv64" fn kernel_main(memmap: &MemoryMap, initfs_img: &Vec<u8>) -> 
         }
       }
       "int" => x86_64::instructions::interrupts::int3(),
+      "dead" => unsafe {
+        *((!0xffu64) as *mut u64) = 0;
+      },
       _ => serial_println!("Error: Unknown command"),
     })();
     command.clear();
