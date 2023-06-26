@@ -14,7 +14,7 @@ all: r
 b: loader kernel initfs
 r: loader kernel initfs OVMF_VARS.fd
 	@echo -e "\e[32;7m>> Starting... \e[m"
-	@qemu-system-x86_64 -s -nographic -m 1G \
+	@qemu-system-x86_64 -s -nographic -m 2G \
 		-drive if=pflash,format=raw,readonly=on,file=$(OVMF_DIR)/OVMF_CODE.fd \
 		-drive if=pflash,format=raw,file=OVMF_VARS.fd \
 		-drive format=raw,file=fat:rw:$(IMG_DIR)

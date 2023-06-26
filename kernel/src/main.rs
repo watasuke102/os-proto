@@ -40,6 +40,17 @@ pub extern "sysv64" fn kernel_main(memmap: &MemoryMap, initfs_img: &Vec<u8>) -> 
   paging::init();
   global_allocator::init(&memmap);
   interrupt::init();
+  unsafe {
+    log_debug!("writing to Phys 0x4000_0000");
+    let p = 0xffff_8000_0000_4000u64 as *mut u64;
+    let value = 0xdeadbeef;
+    *(0x4000_4000 as *mut u64) = value;
+    // *p = value;
+    log_debug!("Written: {:p} == 0x{:x}", p, *p);
+    if *p != value {
+      panic!("User Page isn't written correctly");
+    }
+  }
 
   let initfs = fat::Fat::new(initfs_img.to_vec());
 
