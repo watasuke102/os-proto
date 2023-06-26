@@ -31,20 +31,17 @@ pub fn init() {
     ES::set_reg(SegmentSelector(0));
     FS::set_reg(SegmentSelector(0));
     GS::set_reg(SegmentSelector(0));
-    start_kernel_mode();
-  }
-}
-
-pub fn start_kernel_mode() {
-  unsafe {
-    SS::set_reg(*KERNEL_DATA_SELECTOR.get().unwrap());
     CS::set_reg(*KERNEL_CODE_SELECTOR.get().unwrap());
+    SS::set_reg(*KERNEL_DATA_SELECTOR.get().unwrap());
   }
 }
 
-pub fn start_user_mode() {
+// (CS, SS)
+pub fn get_user_segment() -> (u16, u16) {
   unsafe {
-    SS::set_reg(*USER_DATA_SELECTOR.get().unwrap());
-    CS::set_reg(*USER_CODE_SELECTOR.get().unwrap());
+    (
+      (*USER_CODE_SELECTOR.get().unwrap()).0,
+      (*USER_DATA_SELECTOR.get().unwrap()).0,
+    )
   }
 }
