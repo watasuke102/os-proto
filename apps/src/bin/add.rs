@@ -8,7 +8,7 @@ extern "sysv64" fn call_add_syscall(_a: u64, _b: u64, _c: u64, _d: u64, _e: u64,
   unsafe {
     core::arch::asm!(
       "push rax",
-      "mov  rax, 0",
+      "mov  rax, 1",
       "syscall",
       "pop rax",
       in("r10") _d,

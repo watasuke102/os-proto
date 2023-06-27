@@ -1,5 +1,5 @@
-use alloc::vec;
-use common::{log_debug, serial_println};
+use crate::syscall::arithmetic::*;
+use common::log_debug;
 use core::arch::global_asm;
 use x86_64::{
   registers::model_specific::{Efer, EferFlags, LStar},
@@ -11,6 +11,8 @@ use x86_64::{
 global_asm!(
   r"
 handle_syscall_entry:
+  cmp   rax, 0
+  je    .syscall_exit
   push  rbp
   push  rcx
   push  r11
@@ -22,6 +24,10 @@ handle_syscall_entry:
   pop	 rcx
   pop  rbp
   sysretq
+.syscall_exit:
+  mov rsp, [KERNEL_RSP]
+  mov rax, rdi
+  ret
 "
 );
 
@@ -29,30 +35,13 @@ extern "sysv64" {
   fn handle_syscall_entry();
 }
 
-const SYSCALL_LEN: usize = 2;
+const SYSCALL_LEN: usize = 3;
 #[no_mangle]
 static mut syscall_table: [u64; SYSCALL_LEN] = [0; SYSCALL_LEN];
 
-extern "sysv64" fn add(a: u64, b: u64, c: u64, d: u64, e: u64, f: u64) {
-  serial_println!(
-    "[syscall] add: {} + {} + {} + {} + {} + {} = {}",
-    a,
-    b,
-    c,
-    d,
-    e,
-    f,
-    a + b + c + d + e + f
-  );
-}
-
-extern "sysv64" fn diff(a: u64, b: u64) {
-  serial_println!("[syscall] diff: {} - {} = {}", a, b, a - b);
-}
-
 pub fn init() {
   unsafe {
-    syscall_table = [add as u64, diff as u64];
+    syscall_table = [0, add as u64, diff as u64];
     log_debug!(
       "syscall entry: 0x{:x}, syscall[0]: 0x{:x}",
       handle_syscall_entry as u64,

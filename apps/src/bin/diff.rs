@@ -8,7 +8,7 @@ extern "sysv64" fn call_diff_syscall(_a: u64, _b: u64) {
   unsafe {
     core::arch::asm!(
       "push rax",
-      "mov  rax, 1",
+      "mov  rax, 2",
       "syscall",
       "pop rax",
       options(nostack)
