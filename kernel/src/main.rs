@@ -12,6 +12,7 @@ mod fat;
 mod interrupt;
 mod linked_list;
 mod memory;
+mod syscall;
 
 use alloc::{alloc::Layout, string::String, vec::Vec};
 use common::{
@@ -40,6 +41,7 @@ pub extern "sysv64" fn kernel_main(memmap: &MemoryMap, initfs_img: &Vec<u8>) -> 
   paging::init();
   global_allocator::init(&memmap);
   interrupt::init();
+  syscall::syscall::init();
   unsafe {
     log_debug!("writing to Phys 0x4000_0000");
     let p = 0xffff_8000_0000_4000u64 as *mut u64;
