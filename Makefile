@@ -6,7 +6,7 @@ INITFS_ITEM := $(shell find initfs -type f)
 COMMON_SRC  := $(shell find common -name "*.rs")
 LOADER_SRC  := $(COMMON_SRC) $(shell find loader -name "*.rs")
 KERNEL_SRC  := $(COMMON_SRC) $(shell find kernel -name "*.rs" -or -name "*.asm")
-APPS        := none fib loop add
+APPS        := none fib loop add diff
 
 .PHONY: all b r kill apps loader kernel initfs
 

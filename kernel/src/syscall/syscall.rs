@@ -1,3 +1,4 @@
+use alloc::vec;
 use common::{log_debug, serial_println};
 use core::arch::global_asm;
 use x86_64::{
@@ -28,8 +29,9 @@ extern "sysv64" {
   fn handle_syscall_entry();
 }
 
+const SYSCALL_LEN: usize = 2;
 #[no_mangle]
-static syscall_table: [extern "sysv64" fn(u64, u64, u64, u64, u64, u64); 1] = [add];
+static mut syscall_table: [u64; SYSCALL_LEN] = [0; SYSCALL_LEN];
 
 extern "sysv64" fn add(a: u64, b: u64, c: u64, d: u64, e: u64, f: u64) {
   serial_println!(
@@ -44,8 +46,13 @@ extern "sysv64" fn add(a: u64, b: u64, c: u64, d: u64, e: u64, f: u64) {
   );
 }
 
+extern "sysv64" fn diff(a: u64, b: u64) {
+  serial_println!("[syscall] diff: {} - {} = {}", a, b, a - b);
+}
+
 pub fn init() {
   unsafe {
+    syscall_table = [add as u64, diff as u64];
     log_debug!(
       "syscall entry: 0x{:x}, syscall[0]: 0x{:x}",
       handle_syscall_entry as u64,
