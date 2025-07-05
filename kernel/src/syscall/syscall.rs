@@ -2,8 +2,8 @@ use crate::syscall::arithmetic::*;
 use common::log_debug;
 use core::arch::global_asm;
 use x86_64::{
-  registers::model_specific::{Efer, EferFlags, LStar},
   VirtAddr,
+  registers::model_specific::{Efer, EferFlags, LStar},
 };
 
 // syscall (abi is same as Linux syscall)
@@ -31,12 +31,13 @@ handle_syscall_entry:
 "
 );
 
-extern "sysv64" {
+unsafe extern "sysv64" {
   fn handle_syscall_entry();
 }
 
 const SYSCALL_LEN: usize = 3;
-#[no_mangle]
+#[unsafe(no_mangle)]
+#[allow(non_upper_case_globals)]
 static mut syscall_table: [u64; SYSCALL_LEN] = [0; SYSCALL_LEN];
 
 pub fn init() {

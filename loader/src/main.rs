@@ -4,23 +4,19 @@
 
 extern crate alloc;
 use alloc::{vec, vec::Vec};
+
 use common::{
   log_debug, log_info,
-  memory_map::{is_available_memory, MemoryMap, MEMORYMAP_LIST_LEN},
+  memory_map::{MEMORYMAP_LIST_LEN, MemoryMap as CommonMemMap, is_available_memory},
 };
 use core::arch::asm;
 use elf_rs::{Elf, ElfFile, ProgramType};
 use uefi::{
-  prelude::*,
-  proto::{
-    loaded_image::LoadedImage,
-    media::{
-      file::{File, FileAttribute, FileMode, FileType::*, RegularFile},
-      fs::SimpleFileSystem,
-    },
-  },
-  table::boot::MemoryDescriptor,
   CStr16,
+  boot::MemoryDescriptor,
+  mem::memory_map::MemoryMap,
+  prelude::*,
+  proto::media::file::{File, FileAttribute, FileMode, FileType::*, RegularFile},
 };
 
 #[derive(Debug)]
@@ -32,14 +28,18 @@ struct LoadSegment {
 }
 
 #[entry]
-fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
-  table.stdout().clear().unwrap();
-  uefi_services::init(&mut table).unwrap();
+fn main() -> Status {
+  uefi::helpers::init().unwrap();
   log_info!("Started boot loader");
+  {
+    let mut v = Vec::<u8>::new();
+    v.push(0);
+    log_info!("v: {:?}", v);
+  }
 
   // open kernel file
   log_info!("Loading kernel");
-  let (mut kernel_file, kernel_size) = open_file(table.boot_services(), cstr16!("kernel.elf"));
+  let (mut kernel_file, kernel_size) = open_file(cstr16!("kernel.elf"));
   let mut loader_pool = vec![0; kernel_size as usize];
   kernel_file.read(&mut loader_pool).unwrap();
   // calculate LOAD segment range
@@ -71,17 +71,17 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
 
   // open initfs.img
   log_info!("Loading initial fs");
-  let (mut initfs, initfs_size) = open_file(table.boot_services(), cstr16!("initfs.img"));
+  let (mut initfs, initfs_size) = open_file(cstr16!("initfs.img"));
   let mut initfs_pool = vec![0; initfs_size as usize];
   initfs.read(&mut initfs_pool).unwrap();
 
   // get memmap
-  let mut memmap = MemoryMap {
+  let mut memmap = CommonMemMap {
     list: [MemoryDescriptor::default(); MEMORYMAP_LIST_LEN],
     len:  0,
   };
   log_info!("Exiting boot services");
-  let (_, memmap_table) = table.exit_boot_services();
+  let memmap_table = unsafe { uefi::boot::exit_boot_services(None) };
   let memmap_iter = memmap_table.entries().into_iter();
   log_debug!("end of boot services (memmap: {})", memmap_iter.len());
 
@@ -92,7 +92,7 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
     }
   }
 
-  let entry: extern "sysv64" fn(&MemoryMap, &Vec<u8>) =
+  let entry: extern "sysv64" fn(&CommonMemMap, &Vec<u8>) =
     unsafe { core::mem::transmute(kernel_entry) };
   log_debug!(
     "Let's go! (entrypoint: 0x{:x} | 0x{:x})",
@@ -110,13 +110,9 @@ fn main(handle: Handle, mut table: SystemTable<Boot>) -> Status {
 
 /// Open file and return (file: RegularFile, size: u64)
 /// Cause panic when try to open directory (specify directory name)
-fn open_file(boot_services: &BootServices, name: &CStr16) -> (RegularFile, u64) {
+fn open_file(name: &CStr16) -> (RegularFile, u64) {
   // open root dir
-  let loaded_image = boot_services
-    .open_protocol_exclusive::<LoadedImage>(boot_services.image_handle())
-    .unwrap();
-  let mut dir = boot_services
-    .open_protocol_exclusive::<SimpleFileSystem>(loaded_image.device())
+  let mut dir = uefi::boot::get_image_file_system(uefi::boot::image_handle())
     .unwrap()
     .open_volume()
     .unwrap();

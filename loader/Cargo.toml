@@ -1,10 +1,13 @@
 [package]
 name = "loader"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 common = {path = "../common"}
-uefi = {version = "0.23.0", features = ["alloc"]}
-uefi-services = "0.20.0"
-elf_rs = "0.3.0"
+uefi = { version = "0.35.0", features = ["global_allocator", "panic_handler"] }
+elf_rs = "0.3.1"
+
+[profile.dev]
+panic = "abort"
+

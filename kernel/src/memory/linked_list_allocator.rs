@@ -37,8 +37,10 @@ impl LinkedListAllocator {
     let mut node = ListNode::new(size);
     node.next = self.head.next.take();
     let node_ptr = addr as *mut ListNode;
-    node_ptr.write(node);
-    self.head.next = Some(&mut *node_ptr)
+    unsafe {
+      node_ptr.write(node);
+      self.head.next = Some(&mut *node_ptr)
+    }
   }
 
   pub fn find_region(

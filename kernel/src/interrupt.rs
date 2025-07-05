@@ -7,12 +7,14 @@ use x86_64::{
 
 static mut IDT: InterruptDescriptorTable = InterruptDescriptorTable::new();
 
+#[allow(static_mut_refs)]
 pub fn init() {
   interrupts::disable();
   log_debug!("initing interrupt...");
   unsafe {
     IDT.breakpoint.set_handler_fn(handle_breakpoint);
-    IDT.double_fault.set_handler_fn(handle_doublefault);
+    // waiting for fix -> https://github.com/rust-osdev/x86_64/issues/553
+    // IDT.double_fault.set_handler_fn(handle_doublefault);
     IDT.page_fault.set_handler_fn(handle_pagefault);
     IDT
       .general_protection_fault
@@ -56,9 +58,9 @@ extern "x86-interrupt" fn handle_pagefault(frame: InterruptStackFrame, error: Pa
     error
   )
 }
-extern "x86-interrupt" fn handle_doublefault(
-  stack_frame: InterruptStackFrame,
-  error_code: u64,
-) -> ! {
-  panic!("DOUBLE FAULT!! ({})\r\n{:#?}", error_code, stack_frame)
-}
+// extern "x86-interrupt" fn handle_doublefault(
+//   stack_frame: InterruptStackFrame,
+//   error_code: u64,
+// ) -> ! {
+//   panic!("DOUBLE FAULT!! ({})\r\n{:#?}", error_code, stack_frame)
+// }

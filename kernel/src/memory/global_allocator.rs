@@ -2,7 +2,7 @@ use crate::memory::linked_list_allocator::LinkedListAllocator;
 use alloc::alloc::{GlobalAlloc, Layout};
 use common::{
   log_info,
-  memory_map::{is_available_memory, MemoryMap},
+  memory_map::{MemoryMap, is_available_memory},
 };
 use core::ptr::null_mut;
 use spin::{Mutex, MutexGuard};
@@ -42,7 +42,7 @@ impl Allocator {
       item: Mutex::new(item),
     }
   }
-  pub fn lock(&self) -> MutexGuard<LinkedListAllocator> {
+  pub fn lock(&self) -> MutexGuard<'_, LinkedListAllocator> {
     self.item.lock()
   }
 }
@@ -56,7 +56,7 @@ unsafe impl GlobalAlloc for Allocator {
       let alloc_end = alloc_begin.checked_add(size).unwrap();
       let excess_size = region.end_addr() - alloc_end;
       if excess_size > 0 {
-        allocator.add_free_region(alloc_end, excess_size);
+        unsafe { allocator.add_free_region(alloc_end, excess_size) };
       }
       alloc_begin as *mut u8
     } else {
@@ -66,6 +66,6 @@ unsafe impl GlobalAlloc for Allocator {
 
   unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
     let (size, _) = LinkedListAllocator::size_align(layout);
-    self.lock().add_free_region(ptr as usize, size);
+    unsafe { self.lock().add_free_region(ptr as usize, size) };
   }
 }

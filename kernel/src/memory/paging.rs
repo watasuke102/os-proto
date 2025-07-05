@@ -1,7 +1,7 @@
 use x86_64::{
+  PhysAddr,
   registers::control::{Cr3, Cr3Flags},
   structures::paging::*,
-  PhysAddr,
 };
 
 const EMPTY_PAGE_TABLE: PageTable = PageTable::new();
@@ -16,6 +16,7 @@ static mut USER_PAGE_DIRECTORY: PageTable = PageTable::new();
 fn phys_frame_from_table(table: &PageTable) -> PhysFrame {
   PhysFrame::from_start_address(PhysAddr::new((table as *const PageTable) as u64)).unwrap()
 }
+#[allow(static_mut_refs)]
 pub fn init() {
   // TODO: remove PRESENT (should be set at PageFault handler?)
   let kernel_page_flag = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;

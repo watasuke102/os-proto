@@ -1,6 +1,6 @@
 IMG_DIR    := img
 LOADER_DIR := $(IMG_DIR)/EFI/BOOT
-OVMF_DIR   := /usr/share/edk2-ovmf/x64
+OVMF_DIR   := /usr/share/edk2/x64
 
 INITFS_ITEM := $(shell find initfs -type f)
 COMMON_SRC  := $(shell find common -name "*.rs")
@@ -12,15 +12,15 @@ APPS        := none fib loop add diff syscallall
 
 all: r
 b: loader kernel initfs
-r: loader kernel initfs OVMF_VARS.fd
+r: loader kernel initfs OVMF_VARS.4m.fd
 	@echo -e "\e[32;7m>> Starting... \e[m"
 	@qemu-system-x86_64 -s -nographic -m 2G \
-		-drive if=pflash,format=raw,readonly=on,file=$(OVMF_DIR)/OVMF_CODE.fd \
-		-drive if=pflash,format=raw,file=OVMF_VARS.fd \
+		-drive if=pflash,format=raw,readonly=on,file=$(OVMF_DIR)/OVMF_CODE.4m.fd \
+		-drive if=pflash,format=raw,file=OVMF_VARS.4m.fd \
 		-drive format=raw,file=fat:rw:$(IMG_DIR)
 
-OVMF_VARS.fd:
-	cp $(OVMF_DIR)/OVMF_VARS.fd .
+OVMF_VARS.4m.fd:
+	cp $(OVMF_DIR)/OVMF_VARS.4m.fd .
 
 # -d int,cpu_reset
 

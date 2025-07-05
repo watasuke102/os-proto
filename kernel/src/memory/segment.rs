@@ -11,6 +11,7 @@ static mut KERNEL_DATA_SELECTOR: OnceCell<SegmentSelector> = OnceCell::new();
 static mut USER_CODE_SELECTOR: OnceCell<SegmentSelector> = OnceCell::new();
 static mut USER_DATA_SELECTOR: OnceCell<SegmentSelector> = OnceCell::new();
 
+#[allow(static_mut_refs)]
 pub fn init() {
   unsafe {
     KERNEL_CODE_SELECTOR
@@ -37,6 +38,7 @@ pub fn init() {
 }
 
 // (CS, SS)
+#[allow(static_mut_refs)]
 pub fn get_user_segment() -> (u16, u16) {
   unsafe {
     (

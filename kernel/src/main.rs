@@ -1,10 +1,8 @@
 #![no_std]
 #![no_main]
-#![feature(const_mut_refs)]
 #![feature(abi_x86_interrupt)]
 #![feature(vec_into_raw_parts)]
 #![feature(alloc_error_handler)]
-#![feature(associated_type_bounds)]
 
 extern crate alloc;
 mod exec;
@@ -34,7 +32,7 @@ fn handle_alloc_error(layout: Layout) -> ! {
   panic!("allocation failed ({:?})", layout);
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "sysv64" fn kernel_main(memmap: &MemoryMap, initfs_img: &Vec<u8>) -> ! {
   log_info!("Welcome to kernel!");
   segment::init();

@@ -5,7 +5,7 @@ use elf_rs::{Elf, ElfFile, ProgramType};
 
 use crate::memory::segment;
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 static mut KERNEL_RSP: u64 = 0;
 
 // call_app(rdi = ss, rsi = cs, rdx = rsp, rcx = rip)
@@ -28,7 +28,7 @@ end_call_app:
 "
 );
 
-extern "sysv64" {
+unsafe extern "sysv64" {
   fn call_app(ss: u64, cs: u64, rsp: u64, rip: u64) -> u64;
 }
 

@@ -1,7 +1,7 @@
 [package]
 name = "kernel"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -10,5 +10,5 @@ common = {path = "../common"}
 x86_64 = "0.14.10"
 spin = "0.9.8"
 uart_16550 = "0.2.18"
-uefi = "0.23.0"
+uefi = "0.35.0"
 elf_rs = "0.3.0"

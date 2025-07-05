@@ -1,4 +1,4 @@
-use uefi::table::boot::{MemoryDescriptor, MemoryType};
+use uefi::boot::{MemoryDescriptor, MemoryType};
 
 pub const MEMORYMAP_LIST_LEN: usize = 128;
 
