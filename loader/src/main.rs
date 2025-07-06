@@ -31,11 +31,6 @@ struct LoadSegment {
 fn main() -> Status {
   uefi::helpers::init().unwrap();
   log_info!("Started boot loader");
-  {
-    let mut v = Vec::<u8>::new();
-    v.push(0);
-    log_info!("v: {:?}", v);
-  }
 
   // open kernel file
   log_info!("Loading kernel");
