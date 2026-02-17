@@ -1,0 +1,11 @@
+[workspace]
+
+resolver = "3"
+
+members = [
+  "common",
+  "kernel",
+  "loader",
+  "apps",
+  "xtask",
+]

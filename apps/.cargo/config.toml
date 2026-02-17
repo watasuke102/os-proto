@@ -1,5 +1,0 @@
-[build]
-target = "x86_64-unknown-none"
-
-[target.x86_64-unknown-none]
-rustflags = ["-C", "link-arg=--image-base=0xffff800000000000"]

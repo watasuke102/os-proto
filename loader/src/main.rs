@@ -33,7 +33,7 @@ fn main() -> Status {
 
   // open kernel file
   log_info!("Loading kernel");
-  let (mut kernel_file, kernel_size) = open_file(cstr16!("kernel.elf"));
+  let (mut kernel_file, kernel_size) = open_file(cstr16!("kernel"));
   let mut loader_pool = vec![0; kernel_size as usize];
   kernel_file.read(&mut loader_pool).unwrap();
   // calculate LOAD segment range

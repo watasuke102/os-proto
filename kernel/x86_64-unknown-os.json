@@ -4,7 +4,7 @@
   "arch": "x86_64",
   "cpu": "x86-64",
   "target-endian": "little",
-  "target-pointer-width": "64",
+  "target-pointer-width": 64,
   "target-c-int-width": 32,
   "os": "none",
   "executables": true,
