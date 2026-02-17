@@ -42,15 +42,15 @@ static mut syscall_table: [u64; SYSCALL_LEN] = [0; SYSCALL_LEN];
 
 pub fn init() {
   unsafe {
-    syscall_table = [0, add as u64, diff as u64];
+    syscall_table = [0, add as *const () as u64, diff as *const () as u64];
     log_debug!(
       "syscall entry: 0x{:x}, syscall[0]: 0x{:x}",
-      handle_syscall_entry as u64,
-      add as u64,
+      handle_syscall_entry as *const () as u64,
+      add as *const () as u64,
     );
     Efer::write(
       EferFlags::LONG_MODE_ACTIVE | EferFlags::LONG_MODE_ENABLE | EferFlags::SYSTEM_CALL_EXTENSIONS,
     );
-    LStar::write(VirtAddr::new(handle_syscall_entry as u64))
+    LStar::write(VirtAddr::new(handle_syscall_entry as *const () as u64))
   }
 }

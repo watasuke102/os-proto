@@ -1,6 +1,5 @@
 #![no_std]
 #![no_main]
-#![feature(vec_into_raw_parts)]
 
 extern crate alloc;
 use alloc::{vec, vec::Vec};
